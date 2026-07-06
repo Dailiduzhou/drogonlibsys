@@ -3,7 +3,7 @@
 
 -- 用户表 (鉴权用)
 CREATE TABLE IF NOT EXISTS users (
-    id          BIGSERIAL PRIMARY KEY,
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username    VARCHAR(64)  NOT NULL UNIQUE,
     password    VARCHAR(255) NOT NULL,          -- 存储 bcrypt 哈希
     role        VARCHAR(16)  NOT NULL DEFAULT 'user',
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- 图书表
 CREATE TABLE IF NOT EXISTS books (
-    id          BIGSERIAL PRIMARY KEY,
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title       VARCHAR(255) NOT NULL,
     author      VARCHAR(128) NOT NULL,
     description TEXT,
