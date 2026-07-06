@@ -1,51 +1,47 @@
 #include <drogon/drogon.h>
 
 #include "libsys/utils/JwtUtils.h"
-#include "libsys/utils/RedisClient.h"
+#include "libsys/utils/AppConfig.h"
 #include "libsys/utils/MinioClient.h"
 #include "libsys/utils/PgClient.h"
+#include "libsys/utils/RedisClient.h"
 #include "filters/JwtAuthFilter.h"
 
-#include <json/json.h>
-#include <cstdlib>
+#include <exception>
 #include <iostream>
 
 int main() {
-    auto &app = drogon::app();
-    const char *configPath = std::getenv("LIBSYS_CONFIG_PATH");
-    app.loadConfigFile(configPath != nullptr ? configPath : "config/config.json");
+    try {
+        const auto config = libsys::loadAppConfig();
 
-    auto &cfg = app.getCustomConfig();
+        // JWT 配置
+        libsys::JwtUtils::init(config.jwt.secret,
+                               config.jwt.issuer,
+                               config.jwt.accessTtlSeconds,
+                               config.jwt.refreshTtlSeconds);
 
-    // JWT 配置
-    const auto &jwt = cfg["jwt"];
-    libsys::JwtUtils::init(
-        jwt["secret"].asString(),
-        jwt["issuer"].asString(),
-        jwt["access_ttl_seconds"].asInt(),
-        jwt["refresh_ttl_seconds"].asInt());
+        // Redis 配置 (JWT 黑名单 + 业务缓存, hiredis 直连)
+        libsys::RedisClient::init(config.redis.host,
+                                  config.redis.port,
+                                  config.redis.password);
 
-    // Redis 配置 (JWT 黑名单 + 业务缓存, hiredis 直连)
-    const auto &rd = cfg["redis"];
-    libsys::RedisClient::init(
-        rd["host"].asString(),
-        rd["port"].asInt(),
-        rd["password"].asString());
+        // PostgreSQL 数据访问层
+        libsys::PgClient::init();
 
-    // PostgreSQL 数据访问层
-    libsys::PgClient::init();
+        // MinIO 对象存储
+        libsys::MinioClient::init(config.minio.endpoint,
+                                  config.minio.accessKey,
+                                  config.minio.secretKey,
+                                  config.minio.bucket,
+                                  config.minio.secure);
 
-    // MinIO 对象存储
-    const auto &mc = cfg["minio"];
-    libsys::MinioClient::init(
-        mc["endpoint"].asString(),
-        mc["accessKey"].asString(),
-        mc["secretKey"].asString(),
-        mc["bucket"].asString(),
-        mc["secure"].asBool());
+        LOG_INFO << "Loaded config from " << config.filePath;
+        LOG_INFO << "drogonlibsys starting on port 8080 ...";
 
-    LOG_INFO << "drogonlibsys starting on port 8080 ...";
-
-    app.run();
-    return 0;
+        drogon::app().run();
+        return 0;
+    } catch (const std::exception &e) {
+        std::cerr << "Startup failed: " << e.what() << '\n';
+        return 1;
+    }
 }

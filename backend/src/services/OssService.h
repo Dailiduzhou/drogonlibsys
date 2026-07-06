@@ -8,14 +8,13 @@ namespace libsys {
 // 参见 AGENTS.md 2.2 封面文件上传
 class OssService {
 public:
-    // 上传封面, 返回 Object Key (入库保存)
-    std::string uploadCover(int64_t bookId,
-                            const std::string &fileName,
-                            const std::string &contentType,
-                            const std::string &fileData);
+  // 上传封面, 返回 Object Key (入库保存)
+  std::string uploadCover(int64_t bookId, const std::string &fileName,
+                          const std::string &contentType,
+                          const std::string &fileData);
 
-    // 获取封面访问 URL
-    std::string coverUrl(const std::string &objectKey);
+  // 获取封面访问 URL
+  std::string coverUrl(const std::string &objectKey);
 };
 
-}  // namespace libsys
+} // namespace libsys

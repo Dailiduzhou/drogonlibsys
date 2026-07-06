@@ -10,9 +10,8 @@ namespace libsys {
 // 参见 AGENTS.md 2.1 中间件拦截 + JWT 黑名单
 class JwtAuthFilter : public drogon::HttpFilter<JwtAuthFilter> {
 public:
-    void doFilter(const drogon::HttpRequestPtr &req,
-                  drogon::FilterCallback &&fcb,
-                  drogon::FilterChainCallback &&fccb) override;
+  void doFilter(const drogon::HttpRequestPtr &req, drogon::FilterCallback &&fcb,
+                drogon::FilterChainCallback &&fccb) override;
 };
 
-}  // namespace libsys
+} // namespace libsys

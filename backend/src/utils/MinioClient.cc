@@ -13,39 +13,41 @@ std::string g_accessKey;
 std::string g_secretKey;
 std::string g_bucket;
 bool g_secure = false;
-}  // namespace
+} // namespace
 
-void MinioClient::init(const std::string &endpoint, const std::string &accessKey,
-                       const std::string &secretKey, const std::string &bucket, bool secure) {
-    g_endpoint = endpoint;
-    g_accessKey = accessKey;
-    g_secretKey = secretKey;
-    g_bucket = bucket;
-    g_secure = secure;
+void MinioClient::init(const std::string &endpoint,
+                       const std::string &accessKey,
+                       const std::string &secretKey, const std::string &bucket,
+                       bool secure) {
+  g_endpoint = endpoint;
+  g_accessKey = accessKey;
+  g_secretKey = secretKey;
+  g_bucket = bucket;
+  g_secure = secure;
 }
 
 std::string MinioClient::putCover(const std::string &objectName,
                                   const std::string &contentType,
                                   const std::string &data) {
-    // TODO: 使用 minio-cpp 上传对象至 g_bucket
-    //   - 构造 PutObjectArgs(data, size, contentType)
-    //   - 调用 client.PutObject(bucket, objectName, args)
-    //   - 成功后返回 objectName 作为 Object Key
-    (void)contentType;
-    (void)data;
-    return objectName;
+  // TODO: 使用 minio-cpp 上传对象至 g_bucket
+  //   - 构造 PutObjectArgs(data, size, contentType)
+  //   - 调用 client.PutObject(bucket, objectName, args)
+  //   - 成功后返回 objectName 作为 Object Key
+  (void)contentType;
+  (void)data;
+  return objectName;
 }
 
 std::string MinioClient::getUrl(const std::string &objectKey) {
-    // TODO: 生成预签名 URL 或返回公共访问 URL
-    const char *scheme = g_secure ? "https://" : "http://";
-    return std::string(scheme) + g_endpoint + "/" + g_bucket + "/" + objectKey;
+  // TODO: 生成预签名 URL 或返回公共访问 URL
+  const char *scheme = g_secure ? "https://" : "http://";
+  return std::string(scheme) + g_endpoint + "/" + g_bucket + "/" + objectKey;
 }
 
 bool MinioClient::remove(const std::string &objectKey) {
-    // TODO: 调用 client.RemoveObject(bucket, objectKey)
-    (void)objectKey;
-    return true;
+  // TODO: 调用 client.RemoveObject(bucket, objectKey)
+  (void)objectKey;
+  return true;
 }
 
-}  // namespace libsys
+} // namespace libsys

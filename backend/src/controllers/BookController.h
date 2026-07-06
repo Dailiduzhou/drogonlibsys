@@ -13,31 +13,33 @@ namespace libsys {
 //   POST   /api/books/{id}/cover   封面上传 [auth]
 class BookController : public drogon::HttpController<BookController> {
 public:
-    METHOD_LIST_BEGIN
-    ADD_METHOD_TO(BookController::list,       "/api/books",             Get);
-    ADD_METHOD_TO(BookController::get,        "/api/books/{1}",         Get);
-    ADD_METHOD_TO(BookController::create,     "/api/books",             Post,   JwtAuthFilter);
-    ADD_METHOD_TO(BookController::update,     "/api/books/{1}",         Put,    JwtAuthFilter);
-    ADD_METHOD_TO(BookController::remove,     "/api/books/{1}",         Delete, JwtAuthFilter);
-    ADD_METHOD_TO(BookController::uploadCover,"/api/books/{1}/cover",   Post,   JwtAuthFilter);
-    METHOD_LIST_END
+  METHOD_LIST_BEGIN
+  ADD_METHOD_TO(BookController::list, "/api/books", Get);
+  ADD_METHOD_TO(BookController::get, "/api/books/{1}", Get);
+  ADD_METHOD_TO(BookController::create, "/api/books", Post, JwtAuthFilter);
+  ADD_METHOD_TO(BookController::update, "/api/books/{1}", Put, JwtAuthFilter);
+  ADD_METHOD_TO(BookController::remove, "/api/books/{1}", Delete,
+                JwtAuthFilter);
+  ADD_METHOD_TO(BookController::uploadCover, "/api/books/{1}/cover", Post,
+                JwtAuthFilter);
+  METHOD_LIST_END
 
-    void list(const drogon::HttpRequestPtr &req,
+  void list(const drogon::HttpRequestPtr &req,
+            std::function<void(const drogon::HttpResponsePtr &)> &&cb);
+  void get(const drogon::HttpRequestPtr &req,
+           std::function<void(const drogon::HttpResponsePtr &)> &&cb,
+           int64_t id);
+  void create(const drogon::HttpRequestPtr &req,
               std::function<void(const drogon::HttpResponsePtr &)> &&cb);
-    void get(const drogon::HttpRequestPtr &req,
-             std::function<void(const drogon::HttpResponsePtr &)> &&cb,
-             int64_t id);
-    void create(const drogon::HttpRequestPtr &req,
-                std::function<void(const drogon::HttpResponsePtr &)> &&cb);
-    void update(const drogon::HttpRequestPtr &req,
-                std::function<void(const drogon::HttpResponsePtr &)> &&cb,
-                int64_t id);
-    void remove(const drogon::HttpRequestPtr &req,
-                std::function<void(const drogon::HttpResponsePtr &)> &&cb,
-                int64_t id);
-    void uploadCover(const drogon::HttpRequestPtr &req,
-                     std::function<void(const drogon::HttpResponsePtr &)> &&cb,
-                     int64_t id);
+  void update(const drogon::HttpRequestPtr &req,
+              std::function<void(const drogon::HttpResponsePtr &)> &&cb,
+              int64_t id);
+  void remove(const drogon::HttpRequestPtr &req,
+              std::function<void(const drogon::HttpResponsePtr &)> &&cb,
+              int64_t id);
+  void uploadCover(const drogon::HttpRequestPtr &req,
+                   std::function<void(const drogon::HttpResponsePtr &)> &&cb,
+                   int64_t id);
 };
 
-}  // namespace libsys
+} // namespace libsys
