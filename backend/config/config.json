@@ -1,0 +1,49 @@
+{
+    "listeners": [
+        {
+            "host": "0.0.0.0",
+            "port": 8080
+        }
+    ],
+    "db_clients": [
+        {
+            "name": "pg",
+            "rdbms": "postgresql",
+            "host": "127.0.0.1",
+            "port": 5432,
+            "dbname": "libsys",
+            "user": "libsys",
+            "passwd": "libsys",
+            "is_fast": true,
+            "connNumber": 8
+        }
+    ],
+    "app": {
+        "log": {
+            "logPath": "./logs/",
+            "loglevel": "DEBUG"
+        },
+        "maxConnectionNum": 10240,
+        "maxConnectionssPerIP": 128
+    },
+    "custom_config": {
+        "jwt": {
+            "secret": "change-me-in-production",
+            "issuer": "drogonlibsys",
+            "access_ttl_seconds": 900,
+            "refresh_ttl_seconds": 604800
+        },
+        "redis": {
+            "host": "127.0.0.1",
+            "port": 6379,
+            "password": ""
+        },
+        "minio": {
+            "endpoint": "127.0.0.1:9000",
+            "accessKey": "minioadmin",
+            "secretKey": "minioadmin",
+            "bucket": "libsys-covers",
+            "secure": false
+        }
+    }
+}

@@ -1,0 +1,25 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Environment
+.env
+.env.*
+
+# Root build outputs
+build/
+
+# Backend
+backend/.xmake/
+backend/build/
+backend/logs/
+
+# Frontend
+frontend/target/
+frontend/dist/
+frontend/.dioxus/
+
+# Temporary files
+*.log
+*.tmp

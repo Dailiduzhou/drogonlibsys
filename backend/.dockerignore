@@ -1,0 +1,7 @@
+.git
+.gitignore
+.xmake
+build
+logs
+tests
+*.log
