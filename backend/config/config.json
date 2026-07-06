@@ -78,6 +78,7 @@
             "accessKey": "minioadmin",
             "secretKey": "minioadmin",
             "bucket": "libsys-covers",
+            "region": "us-east-1",
             "secure": false
         }
     }

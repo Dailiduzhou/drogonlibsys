@@ -4,13 +4,14 @@
 
 namespace libsys {
 
-// MinIO (S3 兼容) 对象存储封装
+// 基于 AWS S3 SDK 的 MinIO 对象存储封装
 // 职责: 图书封面上传 / 下载 / 删除, 数据库仅保存 Object Key
 class MinioClient {
 public:
   static void init(const std::string &endpoint, const std::string &accessKey,
                    const std::string &secretKey, const std::string &bucket,
-                   bool secure);
+                   const std::string &region, bool secure);
+  static void shutdown();
 
   // 上传封面图片, 返回 Object Key
   // objectName 形如: covers/<bookId>-<uuid>.jpg

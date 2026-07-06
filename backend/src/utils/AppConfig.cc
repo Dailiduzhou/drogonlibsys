@@ -180,6 +180,9 @@ void applyEnvOverrides(AppConfig &config) {
   if (const char *value = readEnv("LIBSYS_MINIO_BUCKET"); value != nullptr) {
     config.minio.bucket = value;
   }
+  if (const char *value = readEnv("LIBSYS_MINIO_REGION"); value != nullptr) {
+    config.minio.region = value;
+  }
   config.minio.secure =
       parseBoolEnv("LIBSYS_MINIO_SECURE", config.minio.secure);
 }
@@ -253,6 +256,17 @@ AppConfig loadAppConfigFromCustomConfig(const Json::Value &root) {
   config.minio.accessKey = requireString(minio, "minio", "accessKey");
   config.minio.secretKey = requireString(minio, "minio", "secretKey");
   config.minio.bucket = requireString(minio, "minio", "bucket");
+  if (minio.isMember("region")) {
+    if (!minio["region"].isString()) {
+      throw std::runtime_error("custom_config.minio.region must be a string");
+    }
+    const auto region = minio["region"].asString();
+    if (region.empty()) {
+      throw std::runtime_error(
+          "custom_config.minio.region must not be empty");
+    }
+    config.minio.region = region;
+  }
   config.minio.secure = requireBool(minio, "minio", "secure");
 
   applyEnvOverrides(config);

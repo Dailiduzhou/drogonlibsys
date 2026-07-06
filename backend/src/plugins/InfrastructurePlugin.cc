@@ -23,12 +23,13 @@ void InfrastructurePlugin::initAndStart(const Json::Value &config) {
   PgClient::init();
   MinioClient::init(appConfig.minio.endpoint, appConfig.minio.accessKey,
                     appConfig.minio.secretKey, appConfig.minio.bucket,
-                    appConfig.minio.secure);
+                    appConfig.minio.region, appConfig.minio.secure);
 
   LOG_INFO << "InfrastructurePlugin initialized";
 }
 
 void InfrastructurePlugin::shutdown() {
+  MinioClient::shutdown();
 }
 
 } // namespace libsys

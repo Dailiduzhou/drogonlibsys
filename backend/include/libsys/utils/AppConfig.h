@@ -23,6 +23,7 @@ struct MinioConfig {
   std::string accessKey;
   std::string secretKey;
   std::string bucket;
+  std::string region{"us-east-1"};
   bool secure{false};
 };
 

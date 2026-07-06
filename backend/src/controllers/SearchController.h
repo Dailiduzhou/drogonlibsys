@@ -7,7 +7,6 @@ namespace libsys {
 using drogon::Get;
 
 // 全文搜索路由: GET /api/search?q=<keyword>&offset=&limit=
-// 使用 PostgreSQL tsvector + GIN 倒排索引
 class SearchController : public drogon::HttpController<SearchController> {
 public:
   METHOD_LIST_BEGIN
