@@ -8,7 +8,7 @@
 
 namespace libsys {
 
-// PostgreSQL 数据访问层 (基于 libpqxx)
+// PostgreSQL 数据访问层 (基于 Drogon ORM)
 class PgClient {
 public:
   static void init();

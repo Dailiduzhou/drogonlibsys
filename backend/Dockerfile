@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y \
     git \
     libcurl4-openssl-dev \
     libhiredis-dev \
-    libpqxx-dev \
     libssl-dev \
     pkg-config \
     zlib1g-dev \

@@ -6,6 +6,7 @@
 # Environment
 .env
 .env.*
+!.env.example
 
 # Root build outputs
 build/

@@ -3,16 +3,16 @@ services:
     image: postgres:17-alpine
     container_name: libsys-postgres
     environment:
-      POSTGRES_DB: libsys
-      POSTGRES_USER: libsys
-      POSTGRES_PASSWORD: libsys
+      POSTGRES_DB: ${POSTGRES_DB:-libsys}
+      POSTGRES_USER: ${POSTGRES_USER:-libsys}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-libsys}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U libsys -d libsys"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-libsys} -d ${POSTGRES_DB:-libsys}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -21,7 +21,7 @@ services:
     image: redis:7-alpine
     container_name: libsys-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -33,13 +33,13 @@ services:
   minio:
     image: minio/minio:latest
     container_name: libsys-minio
-    command: server /data --console-address ":9001"
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT:-9001}"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -55,8 +55,8 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c
-      "mc alias set local http://minio:9000 minioadmin minioadmin &&
-       mc mb -p local/libsys-covers || true"
+      "mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
+       mc mb -p local/${LIBSYS_MINIO_BUCKET:-libsys-covers} || true"
     restart: "no"
 
   backend:
@@ -72,9 +72,22 @@ services:
       minio:
         condition: service_healthy
     environment:
-      LIBSYS_CONFIG_PATH: config/config.docker.json
+      LIBSYS_CONFIG_PATH: ${LIBSYS_CONFIG_PATH:-config/config.docker.json}
+      LIBSYS_JWT_SECRET: ${LIBSYS_JWT_SECRET:-change-me-in-production}
+      LIBSYS_JWT_ISSUER: ${LIBSYS_JWT_ISSUER:-drogonlibsys}
+      LIBSYS_JWT_ACCESS_TTL_SECONDS: ${LIBSYS_JWT_ACCESS_TTL_SECONDS:-900}
+      LIBSYS_JWT_REFRESH_TTL_SECONDS: ${LIBSYS_JWT_REFRESH_TTL_SECONDS:-604800}
+      LIBSYS_REDIS_HOST: ${LIBSYS_REDIS_HOST:-redis}
+      LIBSYS_REDIS_PORT: ${LIBSYS_REDIS_PORT:-6379}
+      LIBSYS_REDIS_PASSWORD: ${LIBSYS_REDIS_PASSWORD:-}
+      LIBSYS_MINIO_ENDPOINT: ${LIBSYS_MINIO_ENDPOINT:-minio:9000}
+      LIBSYS_MINIO_ACCESS_KEY: ${LIBSYS_MINIO_ACCESS_KEY:-minioadmin}
+      LIBSYS_MINIO_SECRET_KEY: ${LIBSYS_MINIO_SECRET_KEY:-minioadmin}
+      LIBSYS_MINIO_BUCKET: ${LIBSYS_MINIO_BUCKET:-libsys-covers}
+      LIBSYS_MINIO_REGION: ${LIBSYS_MINIO_REGION:-us-east-1}
+      LIBSYS_MINIO_SECURE: ${LIBSYS_MINIO_SECURE:-false}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
 
   frontend:
     build:
@@ -84,7 +97,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "8081:80"
+      - "${FRONTEND_PORT:-8081}:80"
 
 volumes:
   postgres-data:

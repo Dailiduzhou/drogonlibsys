@@ -121,11 +121,11 @@ ClientState currentState() {
   return {g_client, g_config};
 }
 
-std::runtime_error s3Error(const std::string &action,
-                           const Aws::Client::AWSError<Aws::S3::S3Errors>
-                               &error) {
-  return std::runtime_error("MinIO " + action + " failed: " +
-                            error.GetExceptionName() + ": " +
+std::runtime_error
+s3Error(const std::string &action,
+        const Aws::Client::AWSError<Aws::S3::S3Errors> &error) {
+  return std::runtime_error("MinIO " + action +
+                            " failed: " + error.GetExceptionName() + ": " +
                             error.GetMessage());
 }
 
@@ -170,8 +170,7 @@ std::string MinioClient::putCover(const std::string &objectName,
   request.SetContentType(mimeType.c_str());
   request.SetContentLength(static_cast<long long>(data.size()));
 
-  auto body =
-      Aws::MakeShared<Aws::StringStream>("MinioClient::putCoverBody");
+  auto body = Aws::MakeShared<Aws::StringStream>("MinioClient::putCoverBody");
   body->write(data.data(), static_cast<std::streamsize>(data.size()));
   body->seekg(0, std::ios_base::beg);
   request.SetBody(body);

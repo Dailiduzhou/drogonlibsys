@@ -262,8 +262,7 @@ AppConfig loadAppConfigFromCustomConfig(const Json::Value &root) {
     }
     const auto region = minio["region"].asString();
     if (region.empty()) {
-      throw std::runtime_error(
-          "custom_config.minio.region must not be empty");
+      throw std::runtime_error("custom_config.minio.region must not be empty");
     }
     config.minio.region = region;
   }
