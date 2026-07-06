@@ -4,6 +4,7 @@
 #include "services/BookService.h"
 #include "services/OssService.h"
 
+#include <drogon/MultiPart.h>
 #include <exception>
 #include <json/json.h>
 
@@ -130,11 +131,12 @@ void BookController::remove(
 void BookController::uploadCover(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
-  const auto &files = req->getFiles();
-  if (files.empty()) {
+  drogon::MultiPartParser parser;
+  if (parser.parse(req) != 0 || parser.getFiles().empty()) {
     cb(ApiResponse::fail(400, "no file uploaded"));
     return;
   }
+  const auto &files = parser.getFiles();
 
   auto *svc = drogon::app().getPlugin<BookService>();
   auto book = svc->getBook(id);
@@ -149,9 +151,9 @@ void BookController::uploadCover(
   const auto oldCoverKey = book->coverKey;
   try {
     auto *oss = drogon::app().getPlugin<OssService>();
-    key = oss->uploadCover(id, file.getFileName(), file.getMimeType(),
-                           std::string(file.getFileContent().data(),
-                                       file.getFileContent().size()));
+    const auto content = file.fileContent();
+    key = oss->uploadCover(id, file.getFileName(), "application/octet-stream",
+                           std::string(content.data(), content.size()));
     coverUrl = oss->coverUrl(key);
   } catch (const std::exception &e) {
     cb(ApiResponse::fail(500, std::string("cover upload failed: ") + e.what()));

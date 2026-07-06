@@ -1,8 +1,14 @@
 #pragma once
 
+#include "filters/JwtAuthFilter.h"
 #include <drogon/HttpController.h>
 
 namespace libsys {
+
+using drogon::Delete;
+using drogon::Get;
+using drogon::Post;
+using drogon::Put;
 
 // 图书路由 (RESTful): 写操作受 JwtAuthFilter 保护
 //   GET    /api/books              列表
@@ -16,12 +22,14 @@ public:
   METHOD_LIST_BEGIN
   ADD_METHOD_TO(BookController::list, "/api/books", Get);
   ADD_METHOD_TO(BookController::get, "/api/books/{1}", Get);
-  ADD_METHOD_TO(BookController::create, "/api/books", Post, JwtAuthFilter);
-  ADD_METHOD_TO(BookController::update, "/api/books/{1}", Put, JwtAuthFilter);
+  ADD_METHOD_TO(BookController::create, "/api/books", Post,
+                "libsys::JwtAuthFilter");
+  ADD_METHOD_TO(BookController::update, "/api/books/{1}", Put,
+                "libsys::JwtAuthFilter");
   ADD_METHOD_TO(BookController::remove, "/api/books/{1}", Delete,
-                JwtAuthFilter);
+                "libsys::JwtAuthFilter");
   ADD_METHOD_TO(BookController::uploadCover, "/api/books/{1}/cover", Post,
-                JwtAuthFilter);
+                "libsys::JwtAuthFilter");
   METHOD_LIST_END
 
   void list(const drogon::HttpRequestPtr &req,

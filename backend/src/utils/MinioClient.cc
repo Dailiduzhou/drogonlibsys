@@ -145,8 +145,7 @@ TimestampParts makeTimestamp() {
 }
 
 std::string credentialScope(const TimestampParts &ts) {
-  return ts.shortDate + "/" + kAwsRegion + "/" + kAwsService +
-         "/aws4_request";
+  return ts.shortDate + "/" + kAwsRegion + "/" + kAwsService + "/aws4_request";
 }
 
 std::string canonicalUri(const std::string &bucket,
@@ -191,11 +190,10 @@ std::string buildAuthorization(const MinioConfig &config,
                                const std::string &canonicalRequestHash,
                                const std::string &signedHeaders) {
   const auto scope = credentialScope(ts);
-  const std::string stringToSign =
-      std::string(kAwsAlgorithm) + "\n" + ts.amzDate + "\n" + scope + "\n" +
-      canonicalRequestHash;
-  const auto signatureBytes =
-      hmacSha256(signingKey(config, ts), stringToSign);
+  const std::string stringToSign = std::string(kAwsAlgorithm) + "\n" +
+                                   ts.amzDate + "\n" + scope + "\n" +
+                                   canonicalRequestHash;
+  const auto signatureBytes = hmacSha256(signingKey(config, ts), stringToSign);
   const auto signature =
       hexEncode(reinterpret_cast<const unsigned char *>(signatureBytes.data()),
                 signatureBytes.size());
@@ -204,8 +202,7 @@ std::string buildAuthorization(const MinioConfig &config,
          ", Signature=" + signature;
 }
 
-SignedRequest signRequest(const MinioConfig &config,
-                          std::string_view method,
+SignedRequest signRequest(const MinioConfig &config, std::string_view method,
                           const std::string &objectKey,
                           const std::string &payloadHash,
                           std::string_view contentType) {
@@ -220,8 +217,9 @@ SignedRequest signRequest(const MinioConfig &config,
   if (!contentType.empty()) {
     req.headers.emplace_back("content-type", std::string(contentType));
   }
-  std::sort(req.headers.begin(), req.headers.end(),
-            [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
+  std::sort(
+      req.headers.begin(), req.headers.end(),
+      [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
 
   const auto canonicalHeaders = buildCanonicalHeaders(req.headers);
   const auto signedHeaders = joinSignedHeaders(req.headers);
@@ -230,11 +228,9 @@ SignedRequest signRequest(const MinioConfig &config,
       canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
   const auto canonicalRequestHash = sha256Hex(canonicalRequest);
 
-  req.headers.emplace_back("authorization",
-                           buildAuthorization(config,
-                                             ts,
-                                             canonicalRequestHash,
-                                             signedHeaders));
+  req.headers.emplace_back(
+      "authorization",
+      buildAuthorization(config, ts, canonicalRequestHash, signedHeaders));
   return req;
 }
 
@@ -250,13 +246,12 @@ std::string buildPresignedUrl(const MinioConfig &config,
       {"X-Amz-Expires", std::to_string(kPresignExpireSeconds)},
       {"X-Amz-SignedHeaders", "host"},
   };
-  std::sort(query.begin(), query.end(),
-            [](const auto &lhs, const auto &rhs) {
-              if (lhs.first != rhs.first) {
-                return lhs.first < rhs.first;
-              }
-              return lhs.second < rhs.second;
-            });
+  std::sort(query.begin(), query.end(), [](const auto &lhs, const auto &rhs) {
+    if (lhs.first != rhs.first) {
+      return lhs.first < rhs.first;
+    }
+    return lhs.second < rhs.second;
+  });
 
   std::string canonicalQuery;
   for (size_t i = 0; i < query.size(); ++i) {
@@ -267,27 +262,23 @@ std::string buildPresignedUrl(const MinioConfig &config,
                       percentEncode(query[i].second, true);
   }
 
-  const std::string canonicalRequest =
-      "GET\n" + uri + "\n" + canonicalQuery + "\n" + "host:" +
-      config.hostHeader + "\n\nhost\nUNSIGNED-PAYLOAD";
-  const std::string stringToSign =
-      std::string(kAwsAlgorithm) + "\n" + ts.amzDate + "\n" +
-      credentialScope(ts) + "\n" + sha256Hex(canonicalRequest);
-  const auto signatureBytes =
-      hmacSha256(signingKey(config, ts), stringToSign);
+  const std::string canonicalRequest = "GET\n" + uri + "\n" + canonicalQuery +
+                                       "\n" + "host:" + config.hostHeader +
+                                       "\n\nhost\nUNSIGNED-PAYLOAD";
+  const std::string stringToSign = std::string(kAwsAlgorithm) + "\n" +
+                                   ts.amzDate + "\n" + credentialScope(ts) +
+                                   "\n" + sha256Hex(canonicalRequest);
+  const auto signatureBytes = hmacSha256(signingKey(config, ts), stringToSign);
   const auto signature =
       hexEncode(reinterpret_cast<const unsigned char *>(signatureBytes.data()),
                 signatureBytes.size());
-  return config.baseUrl + uri + "?" + canonicalQuery + "&X-Amz-Signature=" +
-         signature;
+  return config.baseUrl + uri + "?" + canonicalQuery +
+         "&X-Amz-Signature=" + signature;
 }
 
-void performRequest(const MinioConfig &config,
-                    std::string_view method,
-                    const std::string &objectKey,
-                    std::string_view contentType,
+void performRequest(const MinioConfig &config, std::string_view method,
+                    const std::string &objectKey, std::string_view contentType,
                     const std::string &body) {
-  ensureCurlInitialized();
   const auto payloadHash = sha256Hex(body);
   const auto signedRequest =
       signRequest(config, method, objectKey, payloadHash, contentType);
@@ -347,8 +338,7 @@ void performRequest(const MinioConfig &config,
 MinioConfig normalizeConfig(const std::string &endpoint,
                             const std::string &accessKey,
                             const std::string &secretKey,
-                            const std::string &bucket,
-                            bool secure) {
+                            const std::string &bucket, bool secure) {
   if (endpoint.empty() || accessKey.empty() || secretKey.empty() ||
       bucket.empty()) {
     throw std::runtime_error(

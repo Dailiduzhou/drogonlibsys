@@ -7,12 +7,6 @@ namespace libsys {
 
 namespace {
 redisContext *g_ctx = nullptr;
-
-void ensure() {
-  if (!g_ctx) {
-    throw std::runtime_error("RedisClient not initialized");
-  }
-}
 } // namespace
 
 void RedisClient::init(const std::string &host, int port,
@@ -36,7 +30,6 @@ void RedisClient::init(const std::string &host, int port,
 }
 
 bool RedisClient::blacklistAdd(const std::string &jti, int ttlSeconds) {
-  ensure();
   auto *r = static_cast<redisReply *>(
       redisCommand(g_ctx, "SET %s 1 EX %d", jti.c_str(), ttlSeconds));
   bool ok = r && r->type != REDIS_REPLY_ERROR;
@@ -46,7 +39,6 @@ bool RedisClient::blacklistAdd(const std::string &jti, int ttlSeconds) {
 }
 
 bool RedisClient::isBlacklisted(const std::string &jti) {
-  ensure();
   auto *r =
       static_cast<redisReply *>(redisCommand(g_ctx, "EXISTS %s", jti.c_str()));
   bool blacklisted = false;
@@ -60,7 +52,6 @@ bool RedisClient::isBlacklisted(const std::string &jti) {
 
 bool RedisClient::set(const std::string &key, const std::string &value,
                       int ttlSeconds) {
-  ensure();
   redisReply *r;
   if (ttlSeconds > 0) {
     r = static_cast<redisReply *>(redisCommand(
@@ -76,7 +67,6 @@ bool RedisClient::set(const std::string &key, const std::string &value,
 }
 
 std::optional<std::string> RedisClient::get(const std::string &key) {
-  ensure();
   auto *r =
       static_cast<redisReply *>(redisCommand(g_ctx, "GET %s", key.c_str()));
   std::optional<std::string> out;
@@ -89,7 +79,6 @@ std::optional<std::string> RedisClient::get(const std::string &key) {
 }
 
 bool RedisClient::del(const std::string &key) {
-  ensure();
   auto *r =
       static_cast<redisReply *>(redisCommand(g_ctx, "DEL %s", key.c_str()));
   bool ok = r && r->type != REDIS_REPLY_ERROR;

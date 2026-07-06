@@ -18,22 +18,22 @@ elseif is_mode("release") then
 	set_strip("all")
 end
 
-add_requires("drogon", "jwt-cpp")
+add_requires("drogon", "jwt-cpp", "yaml-cpp")
 add_requires("libpqxx", "hiredis", { system = true })
 
 target("drogonlibsys")
 set_kind("binary")
 add_files(path.join(backend_dir, "src/**.cc"))
 add_includedirs(path.join(backend_dir, "include"), path.join(backend_dir, "src"))
-add_packages("drogon", "jwt-cpp", "libpqxx", "hiredis")
-add_syslinks("curl", "ssl", "crypto")
+add_packages("drogon", "jwt-cpp", "yaml-cpp", "libpqxx", "hiredis")
+add_syslinks("curl", "ssl", "crypto", "sqlite3")
 set_targetdir("build/bin")
 
 target("tests")
 set_kind("binary")
 add_files(path.join(backend_dir, "tests/test_main.cpp"))
 add_includedirs(path.join(backend_dir, "include"), path.join(backend_dir, "src"))
-add_packages("drogon", "jwt-cpp", "libpqxx", "hiredis")
-add_syslinks("curl", "ssl", "crypto")
+add_packages("drogon", "jwt-cpp", "yaml-cpp", "libpqxx", "hiredis")
+add_syslinks("curl", "ssl", "crypto", "sqlite3")
 set_targetdir("build/bin")
 set_default(false)
