@@ -19,6 +19,8 @@ public:
   static bool createUser(const std::string &username,
                          const std::string &passwordHash,
                          const std::string &role);
+  static bool updateUserPasswordHash(int64_t userId,
+                                     const std::string &passwordHash);
 
   // ---- 图书 CRUD ----
   static std::optional<Book> findBookById(int64_t id);

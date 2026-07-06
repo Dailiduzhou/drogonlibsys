@@ -7,6 +7,45 @@
 
 namespace libsys {
 
+void AuthController::registerUser(
+    const drogon::HttpRequestPtr &req,
+    std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
+  auto json = req->getJsonObject();
+  if (!json || !json->isMember("username") || !json->isMember("password")) {
+    cb(ApiResponse::fail(400, "username and password required"));
+    return;
+  }
+
+  auto *svc = drogon::app().getPlugin<AuthService>();
+  auto result = svc->registerUser(json->get("username", "").asString(),
+                                  json->get("password", "").asString());
+  switch (result.status) {
+  case RegisterStatus::InvalidInput:
+    cb(ApiResponse::fail(400, "username and password required"));
+    return;
+  case RegisterStatus::UsernameTaken:
+    cb(ApiResponse::fail(409, "username already exists"));
+    return;
+  case RegisterStatus::Failed:
+    cb(ApiResponse::fail(500, "failed to create user"));
+    return;
+  case RegisterStatus::Success:
+    break;
+  }
+
+  if (!result.tokens) {
+    cb(ApiResponse::fail(500, "failed to issue tokens"));
+    return;
+  }
+
+  Json::Value data;
+  data["accessToken"] = result.tokens->accessToken;
+  data["refreshToken"] = result.tokens->refreshToken;
+  data["accessExpiresAt"] = (Json::Int64)result.tokens->accessExpiresAt;
+  data["refreshExpiresAt"] = (Json::Int64)result.tokens->refreshExpiresAt;
+  cb(ApiResponse::ok(data));
+}
+
 void AuthController::login(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {

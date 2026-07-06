@@ -26,6 +26,8 @@ drogon::HttpResponsePtr ApiResponse::fail(int code, const std::string &msg) {
     resp->setStatusCode(drogon::k403Forbidden);
   else if (code == 404)
     resp->setStatusCode(drogon::k404NotFound);
+  else if (code == 409)
+    resp->setStatusCode(drogon::k409Conflict);
   else if (code >= 400 && code < 500)
     resp->setStatusCode(drogon::k400BadRequest);
   else
