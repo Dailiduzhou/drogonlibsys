@@ -26,8 +26,7 @@ public:
   static bool updateBook(const Book &b);
   static bool deleteBook(int64_t id);
 
-  // ---- 全文检索 (tsquery) ----
-  // 使用 books.tsv GIN 倒排索引, 按权重排序
+  // ---- 全文检索 ----
   static std::vector<Book> search(const std::string &query, int offset,
                                   int limit);
 };
