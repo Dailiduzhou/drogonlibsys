@@ -4,10 +4,27 @@ version = "0.1.0"
 authors = ["dailiduzhou <qzhsdream@163.com>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-dioxus = { version = "0.7.1", features = [] }
+dioxus = { version = "0.7.1", features = ["router"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+gloo-net = { version = "0.6", features = ["http"] }
+gloo-storage = "0.3"
+gloo-file = { version = "0.3", features = ["futures"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+futures-util = "0.3"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "HtmlInputElement",
+    "FormData",
+    "File",
+    "FileList",
+    "Blob",
+]
 
 [features]
 default = ["web"]

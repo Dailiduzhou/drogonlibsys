@@ -1,0 +1,10 @@
+pub mod book_detail;
+pub mod book_edit;
+pub mod book_new;
+pub mod books;
+pub mod loan_detail;
+pub mod loan_new;
+pub mod loans;
+pub mod login;
+pub mod not_found;
+pub mod search;
