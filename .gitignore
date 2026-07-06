@@ -23,3 +23,5 @@ frontend/.dioxus/
 # Temporary files
 *.log
 *.tmp
+
+.codegraph/
