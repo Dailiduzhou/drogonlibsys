@@ -25,6 +25,10 @@ public:
 
   // JSON 序列化 (供缓存与响应复用)
   static std::string bookKey(int64_t id);
+
+private:
+  static bool invalidateSearchCaches();
+  static bool invalidateBookCaches(int64_t id);
 };
 
 } // namespace libsys

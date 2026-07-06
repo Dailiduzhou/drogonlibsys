@@ -7,7 +7,7 @@
 
 namespace libsys {
 
-// 全文检索服务: PostgreSQL tsvector + GIN 倒排索引, 结果可缓存
+// 搜索服务: PostgreSQL pg_trgm 索引检索, 结果可缓存
 // 参见 AGENTS.md 2.3 全文搜索模块
 class SearchService : public drogon::Plugin<SearchService> {
 public:

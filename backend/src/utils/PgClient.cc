@@ -123,16 +123,18 @@ bool PgClient::deleteBook(int64_t id) {
   }
 }
 
-// 全文检索: 命中 books.tsv GIN 倒排索引, 按 ts_rank 权重排序
+// 搜索: 基于 pg_trgm 索引命中 title/author/description, 按相似度排序
 std::vector<Book> PgClient::search(const std::string &query, int offset,
                                    int limit) {
   auto f = g_db->execSqlAsyncFuture(
       "SELECT id, title, author, description, cover_key, stock, "
       "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
       "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at, "
-      "ts_rank(tsv, plainto_tsquery('simple', $1)) AS rank "
-      "FROM books WHERE tsv @@ plainto_tsquery('simple', $1) "
-      "ORDER BY rank DESC LIMIT $2 OFFSET $3",
+      "similarity(coalesce(title, '') || ' ' || coalesce(author, '') || ' ' "
+      "|| coalesce(description, ''), $1) AS rank "
+      "FROM books WHERE (coalesce(title, '') || ' ' || coalesce(author, '') "
+      "|| ' ' || coalesce(description, '')) ILIKE '%' || $1 || '%' "
+      "ORDER BY rank DESC, id DESC LIMIT $2 OFFSET $3",
       query, limit, offset);
   auto r = f.get();
   std::vector<Book> out;

@@ -60,6 +60,16 @@ std::string BookService::bookKey(int64_t id) {
   return "book:" + std::to_string(id);
 }
 
+bool BookService::invalidateSearchCaches() {
+  return RedisClient::delByPrefix("search:");
+}
+
+bool BookService::invalidateBookCaches(int64_t id) {
+  const bool bookCacheOk = RedisClient::del(bookKey(id));
+  const bool searchCacheOk = invalidateSearchCaches();
+  return bookCacheOk && searchCacheOk;
+}
+
 std::optional<Book> BookService::getBook(int64_t id) {
   std::string key = bookKey(id);
 
@@ -88,13 +98,16 @@ std::vector<Book> BookService::listBooks(int offset, int limit) {
 
 int64_t BookService::createBook(const Book &b) {
   auto id = PgClient::createBook(b);
+  if (id > 0) {
+    invalidateSearchCaches();
+  }
   return id;
 }
 
 bool BookService::updateBook(const Book &b) {
   bool ok = PgClient::updateBook(b);
   if (ok) {
-    RedisClient::del(bookKey(b.id)); // 失效缓存
+    invalidateBookCaches(b.id);
   }
   return ok;
 }
@@ -102,7 +115,7 @@ bool BookService::updateBook(const Book &b) {
 bool BookService::deleteBook(int64_t id) {
   bool ok = PgClient::deleteBook(id);
   if (ok) {
-    RedisClient::del(bookKey(id));
+    invalidateBookCaches(id);
   }
   return ok;
 }

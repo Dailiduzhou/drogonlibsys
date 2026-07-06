@@ -2,6 +2,8 @@
 
 #include <hiredis/hiredis.h>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace libsys {
 
@@ -80,10 +82,39 @@ std::optional<std::string> RedisClient::get(const std::string &key) {
 
 bool RedisClient::del(const std::string &key) {
   auto *r =
-      static_cast<redisReply *>(redisCommand(g_ctx, "DEL %s", key.c_str()));
+      static_cast<redisReply *>(redisCommand(g_ctx, "UNLINK %s", key.c_str()));
   bool ok = r && r->type != REDIS_REPLY_ERROR;
   if (r)
     freeReplyObject(r);
+  return ok;
+}
+
+bool RedisClient::delByPrefix(const std::string &prefix) {
+  auto *r = static_cast<redisReply *>(
+      redisCommand(g_ctx, "KEYS %s*", prefix.c_str()));
+  if (r == nullptr) {
+    return false;
+  }
+
+  std::vector<std::string> keys;
+  if (r->type == REDIS_REPLY_ARRAY) {
+    keys.reserve(r->elements);
+    for (size_t i = 0; i < r->elements; ++i) {
+      auto *item = r->element[i];
+      if (item && item->type == REDIS_REPLY_STRING) {
+        keys.emplace_back(item->str, item->len);
+      }
+    }
+  } else if (r->type == REDIS_REPLY_ERROR) {
+    freeReplyObject(r);
+    return false;
+  }
+  freeReplyObject(r);
+
+  bool ok = true;
+  for (const auto &key : keys) {
+    ok = del(key) && ok;
+  }
   return ok;
 }
 

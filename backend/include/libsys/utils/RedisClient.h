@@ -24,6 +24,7 @@ public:
                   int ttlSeconds = 0);
   static std::optional<std::string> get(const std::string &key);
   static bool del(const std::string &key);
+  static bool delByPrefix(const std::string &prefix);
 };
 
 } // namespace libsys
