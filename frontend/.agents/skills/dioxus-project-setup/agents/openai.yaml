@@ -1,0 +1,32 @@
+interface:
+  display_name: "Dioxus Project Setup"
+  short_description: "Set up new Dioxus projects with proper structure and configuration"
+  icon_small: "./assets/dioxus-icon-small.svg"
+  icon_large: "./assets/dioxus-icon-large.png"
+  brand_color: "#FF6B35"
+  default_prompt: "Create a new Dioxus project with proper structure and configuration"
+
+policy:
+  allow_implicit_invocation: true
+
+dependencies:
+  tools:
+    - type: "shell"
+      description: "Required for running cargo and dx commands"
+    - type: "file_system"
+      description: "Required for creating project directories and files"
+  external_commands:
+    - command: "cargo"
+      description: "Rust package manager for installing dependencies"
+      required: true
+    - command: "dx"
+      description: "Dioxus CLI tool for project management"
+      install_hint: "cargo binstall dioxus-cli"
+      required: true
+
+metadata:
+  version: "1.0.0"
+  author: "Dioxus Skills Team"
+  tags: ["dioxus", "rust", "web", "desktop", "mobile", "setup", "project", "cli"]
+  supported_platforms: ["web", "desktop", "mobile", "fullstack"]
+  rust_version_min: "1.70.0"

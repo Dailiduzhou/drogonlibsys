@@ -47,6 +47,13 @@
             "config": {}
         },
         {
+            "name": "libsys::LoanService",
+            "dependencies": [
+                "libsys::InfrastructurePlugin"
+            ],
+            "config": {}
+        },
+        {
             "name": "libsys::SearchService",
             "dependencies": [
                 "libsys::InfrastructurePlugin"

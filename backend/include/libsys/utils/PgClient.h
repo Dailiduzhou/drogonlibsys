@@ -1,6 +1,7 @@
 #pragma once
 
 #include "libsys/models/Book.h"
+#include "libsys/models/LoanRecord.h"
 #include "libsys/models/User.h"
 #include <optional>
 #include <string>
@@ -25,6 +26,19 @@ public:
   static int64_t createBook(const Book &b);
   static bool updateBook(const Book &b);
   static bool deleteBook(int64_t id);
+
+  // ---- 出借记录 CRUD ----
+  static std::optional<LoanRecord> findLoanRecordById(int64_t id);
+  static std::vector<LoanRecord> listLoanRecords(int offset, int limit);
+  static std::vector<LoanRecord> listLoanRecordsByUser(int64_t userId,
+                                                       int offset, int limit);
+  static int64_t createLoanRecord(const LoanRecord &record);
+  static bool updateLoanRecord(const LoanRecord &record);
+  static bool deleteLoanRecord(int64_t id);
+
+  // ---- 借书 / 还书 ----
+  static BorrowBookResult borrowBook(int64_t bookId, int64_t userId);
+  static ReturnBookResult returnBook(int64_t bookId, int64_t userId);
 
   // ---- 全文检索 ----
   static std::vector<Book> search(const std::string &query, int offset,

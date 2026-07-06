@@ -26,3 +26,4 @@ frontend/.dioxus/
 *.tmp
 
 .codegraph/
+.xmake/

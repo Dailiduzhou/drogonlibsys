@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "dioxus-component-dev": {
+      "source": "bwbioinfo/skill_dioxus",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/dioxus-component-dev/SKILL.md",
+      "computedHash": "382034d1c612daf99bd6854715ebdc23f5fcfa7acff5551751271a45a34a9ac1"
+    },
+    "dioxus-fullstack-dev": {
+      "source": "bwbioinfo/skill_dioxus",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/dioxus-fullstack-dev/SKILL.md",
+      "computedHash": "24cc20d94d2716399e827d06ad02cb712698dac6e61a9adb2a8b49d3d11f4bd7"
+    },
+    "dioxus-project-setup": {
+      "source": "bwbioinfo/skill_dioxus",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/dioxus-project-setup/SKILL.md",
+      "computedHash": "95a67b02a8e2419449a4f0abcf62a146c82c1d8249502771262dbf1b462ada9f"
+    },
+    "dioxus-routing": {
+      "source": "bwbioinfo/skill_dioxus",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/dioxus-routing/SKILL.md",
+      "computedHash": "ba61cd81697e6ee577114463f6fbbe18c07e3a93f30e716e26093e592820cd43"
+    },
+    "dioxus-state-management": {
+      "source": "bwbioinfo/skill_dioxus",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/dioxus-state-management/SKILL.md",
+      "computedHash": "1df0f5b58fed1757d61a79f7df314a4e406bd7d8614917bcb7c302010b2fed1a"
+    },
+    "skill-installer": {
+      "source": "bwbioinfo/skill_dioxus",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/skill-installer/SKILL.md",
+      "computedHash": "1e2183e16a21cfa2cfc7a7d29a5426611962829bb4d3146fbf2980cf3532e7b9"
+    }
+  }
+}

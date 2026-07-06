@@ -23,6 +23,21 @@ Book rowToBook(const drogon::orm::Row &row) {
   return b;
 }
 
+LoanRecord rowToLoanRecord(const drogon::orm::Row &row) {
+  LoanRecord record;
+  record.id = row["id"].as<int64_t>();
+  record.bookId = row["book_id"].as<int64_t>();
+  record.userId = row["user_id"].as<int64_t>();
+  record.status = row["status"].as<std::string>();
+  record.borrowedAt = row["borrowed_at"].as<std::string>();
+  if (!row["returned_at"].isNull()) {
+    record.returnedAt = row["returned_at"].as<std::string>();
+  }
+  record.createdAt = row["created_at"].as<std::string>();
+  record.updatedAt = row["updated_at"].as<std::string>();
+  return record;
+}
+
 std::string str(const std::string &s) { return s; }
 } // namespace
 
@@ -120,6 +135,185 @@ bool PgClient::deleteBook(int64_t id) {
     return true;
   } catch (...) {
     return false;
+  }
+}
+
+std::optional<LoanRecord> PgClient::findLoanRecordById(int64_t id) {
+  auto f = g_db->execSqlAsyncFuture(
+      "SELECT id, book_id, user_id, status, "
+      "to_char(borrowed_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS borrowed_at, "
+      "CASE WHEN returned_at IS NULL THEN NULL ELSE "
+      "to_char(returned_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') END AS returned_at, "
+      "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
+      "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
+      "FROM loan_records WHERE id=$1",
+      id);
+  auto r = f.get();
+  if (r.empty()) {
+    return std::nullopt;
+  }
+  return rowToLoanRecord(r[0]);
+}
+
+std::vector<LoanRecord> PgClient::listLoanRecords(int offset, int limit) {
+  auto f = g_db->execSqlAsyncFuture(
+      "SELECT id, book_id, user_id, status, "
+      "to_char(borrowed_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS borrowed_at, "
+      "CASE WHEN returned_at IS NULL THEN NULL ELSE "
+      "to_char(returned_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') END AS returned_at, "
+      "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
+      "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
+      "FROM loan_records ORDER BY id DESC LIMIT $1 OFFSET $2",
+      limit, offset);
+  auto r = f.get();
+  std::vector<LoanRecord> out;
+  out.reserve(r.size());
+  for (const auto &row : r) {
+    out.push_back(rowToLoanRecord(row));
+  }
+  return out;
+}
+
+std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
+                                                        int offset, int limit) {
+  auto f = g_db->execSqlAsyncFuture(
+      "SELECT id, book_id, user_id, status, "
+      "to_char(borrowed_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS borrowed_at, "
+      "CASE WHEN returned_at IS NULL THEN NULL ELSE "
+      "to_char(returned_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') END AS returned_at, "
+      "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
+      "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
+      "FROM loan_records WHERE user_id=$1 "
+      "ORDER BY id DESC LIMIT $2 OFFSET $3",
+      userId, limit, offset);
+  auto r = f.get();
+  std::vector<LoanRecord> out;
+  out.reserve(r.size());
+  for (const auto &row : r) {
+    out.push_back(rowToLoanRecord(row));
+  }
+  return out;
+}
+
+int64_t PgClient::createLoanRecord(const LoanRecord &record) {
+  auto f = g_db->execSqlAsyncFuture(
+      "INSERT INTO loan_records "
+      "(book_id, user_id, status, borrowed_at, returned_at) "
+      "VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      record.bookId, record.userId, record.status, record.borrowedAt,
+      record.returnedAt ? str(*record.returnedAt) : nullptr);
+  auto r = f.get();
+  return r[0]["id"].as<int64_t>();
+}
+
+bool PgClient::updateLoanRecord(const LoanRecord &record) {
+  try {
+    auto f = g_db->execSqlAsyncFuture(
+        "UPDATE loan_records SET book_id=$1, user_id=$2, status=$3, "
+        "borrowed_at=$4, returned_at=$5 WHERE id=$6",
+        record.bookId, record.userId, record.status, record.borrowedAt,
+        record.returnedAt ? str(*record.returnedAt) : nullptr, record.id);
+    return f.get().affectedRows() > 0;
+  } catch (...) {
+    return false;
+  }
+}
+
+bool PgClient::deleteLoanRecord(int64_t id) {
+  try {
+    auto f = g_db->execSqlAsyncFuture("DELETE FROM loan_records WHERE id=$1",
+                                      id);
+    return f.get().affectedRows() > 0;
+  } catch (...) {
+    return false;
+  }
+}
+
+BorrowBookResult PgClient::borrowBook(int64_t bookId, int64_t userId) {
+  try {
+    auto f = g_db->execSqlAsyncFuture(
+        "WITH book_state AS ("
+        "  SELECT id, stock FROM books WHERE id=$1"
+        "), active_loan AS ("
+        "  SELECT id FROM loan_records "
+        "  WHERE book_id=$1 AND user_id=$2 AND status='borrowed'"
+        "), updated_book AS ("
+        "  UPDATE books SET stock = stock - 1 "
+        "  WHERE id=$1 AND stock > 0 AND NOT EXISTS (SELECT 1 FROM active_loan)"
+        "  RETURNING id"
+        "), inserted AS ("
+        "  INSERT INTO loan_records (book_id, user_id, status, borrowed_at) "
+        "  SELECT id, $2, 'borrowed', now() FROM updated_book "
+        "  RETURNING id"
+        ") "
+        "SELECT EXISTS(SELECT 1 FROM book_state) AS book_exists, "
+        "COALESCE((SELECT stock FROM book_state), -1) AS stock, "
+        "EXISTS(SELECT 1 FROM active_loan) AS has_active_loan, "
+        "COALESCE((SELECT id FROM inserted), 0) AS loan_id",
+        bookId, userId);
+
+    const auto result = f.get();
+    if (result.empty()) {
+      return {};
+    }
+
+    const auto &row = result[0];
+    const auto loanId = row["loan_id"].as<int64_t>();
+    if (loanId > 0) {
+      return {BorrowBookStatus::Borrowed, loanId};
+    }
+    if (!row["book_exists"].as<bool>()) {
+      return {BorrowBookStatus::BookNotFound, 0};
+    }
+    if (row["has_active_loan"].as<bool>()) {
+      return {BorrowBookStatus::AlreadyBorrowed, 0};
+    }
+    if (row["stock"].as<int>() <= 0) {
+      return {BorrowBookStatus::OutOfStock, 0};
+    }
+    return {};
+  } catch (...) {
+    return {};
+  }
+}
+
+ReturnBookResult PgClient::returnBook(int64_t bookId, int64_t userId) {
+  try {
+    auto f = g_db->execSqlAsyncFuture(
+        "WITH active_loan AS ("
+        "  SELECT id FROM loan_records "
+        "  WHERE book_id=$1 AND user_id=$2 AND status='borrowed' "
+        "  ORDER BY id ASC LIMIT 1"
+        "), updated_loan AS ("
+        "  UPDATE loan_records "
+        "  SET status='returned', returned_at=now() "
+        "  WHERE id=(SELECT id FROM active_loan) "
+        "  RETURNING id"
+        "), updated_book AS ("
+        "  UPDATE books SET stock = stock + 1 "
+        "  WHERE id=$1 AND EXISTS (SELECT 1 FROM updated_loan) "
+        "  RETURNING id"
+        ") "
+        "SELECT EXISTS(SELECT 1 FROM books WHERE id=$1) AS book_exists, "
+        "COALESCE((SELECT id FROM updated_loan), 0) AS loan_id",
+        bookId, userId);
+
+    const auto result = f.get();
+    if (result.empty()) {
+      return {};
+    }
+
+    const auto &row = result[0];
+    const auto loanId = row["loan_id"].as<int64_t>();
+    if (loanId > 0) {
+      return {ReturnBookStatus::Returned, loanId};
+    }
+    if (!row["book_exists"].as<bool>()) {
+      return {ReturnBookStatus::BookNotFound, 0};
+    }
+    return {ReturnBookStatus::LoanNotFound, 0};
+  } catch (...) {
+    return {};
   }
 }
 
