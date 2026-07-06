@@ -8,6 +8,7 @@ use crate::routes::Route;
 pub fn Login() -> Element {
     let mut username = use_signal(String::new);
     let mut password = use_signal(String::new);
+    let mut is_register = use_signal(|| false);
     let mut error = use_signal(|| Option::<String>::None);
     let mut loading = use_signal(|| false);
     let mut auth_state = auth::use_auth();
@@ -23,7 +24,12 @@ pub fn Login() -> Element {
         loading.set(true);
         error.set(None);
         spawn(async move {
-            match api::login(&u, &p).await {
+            let result = if is_register() {
+                api::register(&u, &p).await
+            } else {
+                api::login(&u, &p).await
+            };
+            match result {
                 Ok(pair) => {
                     auth_state.set(AuthState {
                         access_token: Some(pair.access_token),
@@ -39,7 +45,17 @@ pub fn Login() -> Element {
 
     rsx! {
         div { class: "mx-auto max-w-sm p-8 mt-16 rounded-xl bg-slate-800 shadow-lg",
-            h1 { class: "text-2xl font-bold mb-6 text-white", "登录" }
+            h1 {
+                class: "text-2xl font-bold mb-2 text-white",
+                if is_register() { "注册" } else { "登录" }
+            }
+            p { class: "text-sm text-slate-400 mb-6",
+                if is_register() {
+                    "创建账号后将自动登录。"
+                } else {
+                    "使用现有账号登录系统。"
+                }
+            }
             if let Some(msg) = error() {
                 div { class: "mb-4 p-2 rounded bg-red-500/20 text-red-300 text-sm", "{msg}" }
             }
@@ -67,7 +83,23 @@ pub fn Login() -> Element {
                     class: "w-full rounded bg-indigo-500 hover:bg-indigo-400 text-white py-2 font-medium disabled:opacity-50",
                     r#type: "submit",
                     disabled: loading(),
-                    if loading() { "登录中..." } else { "登录" }
+                    if loading() {
+                        if is_register() { "注册中..." } else { "登录中..." }
+                    } else if is_register() {
+                        "注册"
+                    } else {
+                        "登录"
+                    }
+                }
+                button {
+                    class: "w-full mt-3 rounded border border-slate-600 text-slate-200 py-2 text-sm hover:bg-slate-700",
+                    r#type: "button",
+                    disabled: loading(),
+                    onclick: move |_| {
+                        error.set(None);
+                        is_register.set(!is_register());
+                    },
+                    if is_register() { "已有账号，去登录" } else { "没有账号，去注册" }
                 }
             }
         }

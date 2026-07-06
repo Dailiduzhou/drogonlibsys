@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::auth::{clear_tokens, load_access_token, save_tokens};
 
-pub const API_BASE: &str = "/api";
+pub const API_BASE: &str = match option_env!("LIBSYS_API_BASE") {
+    Some(base) => base,
+    None => "/api",
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApiResponse<T> {
@@ -244,6 +247,18 @@ pub async fn login(username: &str, password: &str) -> ApiResult<TokenPair> {
     Ok(pair)
 }
 
+pub async fn register(username: &str, password: &str) -> ApiResult<TokenPair> {
+    let body = serde_json::json!({ "username": username, "password": password });
+    let resp = Request::post(&format!("{}/auth/register", API_BASE))
+        .header("Content-Type", "application/json")
+        .body(body.to_string())?
+        .send()
+        .await?;
+    let pair: TokenPair = parse_envelope(resp).await?;
+    save_tokens(&pair);
+    Ok(pair)
+}
+
 pub async fn refresh(refresh_token: &str) -> ApiResult<TokenPair> {
     let body = serde_json::json!({ "refreshToken": refresh_token });
     let resp = Request::post(&format!("{}/auth/refresh", API_BASE))
@@ -387,8 +402,8 @@ pub async fn upload_cover(
     parts.push(&JsValue::from(array));
 
     let blob = if let Some(ct) = content_type {
-        let mut opts = web_sys::BlobPropertyBag::new();
-        opts.type_(ct);
+        let opts = web_sys::BlobPropertyBag::new();
+        opts.set_type(ct);
         web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &opts)
     } else {
         web_sys::Blob::new_with_u8_array_sequence(&parts)
