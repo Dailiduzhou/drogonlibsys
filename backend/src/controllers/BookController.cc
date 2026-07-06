@@ -4,6 +4,7 @@
 #include "services/BookService.h"
 #include "services/OssService.h"
 
+#include <exception>
 #include <json/json.h>
 
 namespace libsys {
@@ -103,9 +104,24 @@ void BookController::remove(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
   BookService svc;
+  auto book = svc.getBook(id);
+  if (!book) {
+    cb(ApiResponse::fail(404, "book not found"));
+    return;
+  }
   if (!svc.deleteBook(id)) {
     cb(ApiResponse::fail(500, "delete failed"));
     return;
+  }
+
+  if (!book->coverKey.empty()) {
+    try {
+      OssService oss;
+      oss.deleteCover(book->coverKey);
+    } catch (const std::exception &e) {
+      LOG_WARN << "failed to remove cover object for deleted book " << id
+               << ": " << e.what();
+    }
   }
   cb(ApiResponse::ok());
 }
@@ -119,25 +135,46 @@ void BookController::uploadCover(
     cb(ApiResponse::fail(400, "no file uploaded"));
     return;
   }
-  const auto &file = files[0];
-  OssService oss;
-  std::string key = oss.uploadCover(
-      id, file.getFileName(), file.getMimeType(),
-      std::string(file.getFileContent().data(), file.getFileContent().size()));
 
-  // 回写数据库 cover_key
   BookService svc;
   auto book = svc.getBook(id);
   if (!book) {
     cb(ApiResponse::fail(404, "book not found"));
     return;
   }
+
+  const auto &file = files[0];
+  std::string key;
+  std::string coverUrl;
+  const auto oldCoverKey = book->coverKey;
+  try {
+    OssService oss;
+    key = oss.uploadCover(
+        id, file.getFileName(), file.getMimeType(),
+        std::string(file.getFileContent().data(), file.getFileContent().size()));
+    coverUrl = oss.coverUrl(key);
+  } catch (const std::exception &e) {
+    cb(ApiResponse::fail(500, std::string("cover upload failed: ") + e.what()));
+    return;
+  }
+
+  // 回写数据库 cover_key
   book->coverKey = key;
   svc.updateBook(*book);
 
+  if (!oldCoverKey.empty() && oldCoverKey != key) {
+    try {
+      OssService oss;
+      oss.deleteCover(oldCoverKey);
+    } catch (const std::exception &e) {
+      LOG_WARN << "failed to remove old cover object for book " << id << ": "
+               << e.what();
+    }
+  }
+
   Json::Value data;
   data["coverKey"] = key;
-  data["coverUrl"] = oss.coverUrl(key);
+  data["coverUrl"] = coverUrl;
   cb(ApiResponse::ok(data));
 }
 

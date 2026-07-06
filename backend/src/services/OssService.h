@@ -15,6 +15,9 @@ public:
 
   // 获取封面访问 URL
   std::string coverUrl(const std::string &objectKey);
+
+  // 删除封面对象
+  bool deleteCover(const std::string &objectKey);
 };
 
 } // namespace libsys

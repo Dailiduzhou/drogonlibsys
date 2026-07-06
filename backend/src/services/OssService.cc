@@ -17,4 +17,8 @@ std::string OssService::coverUrl(const std::string &objectKey) {
   return MinioClient::getUrl(objectKey);
 }
 
+bool OssService::deleteCover(const std::string &objectKey) {
+  return MinioClient::remove(objectKey);
+}
+
 } // namespace libsys

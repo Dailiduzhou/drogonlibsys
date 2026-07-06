@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     git \
+    libcurl4-openssl-dev \
     libhiredis-dev \
     libpqxx-dev \
     libssl-dev \
