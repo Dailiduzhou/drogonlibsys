@@ -203,17 +203,29 @@ std::string resolveConfigPath() {
 }
 
 AppConfig loadAppConfig() {
-  AppConfig config;
-  config.filePath = resolveConfigPath();
+  const auto configPath = resolveConfigPath();
 
   try {
-    drogon::app().loadConfigFile(config.filePath);
+    drogon::app().loadConfigFile(configPath);
   } catch (const std::exception &e) {
     throw std::runtime_error("failed to load Drogon config file '" +
-                             config.filePath + "': " + e.what());
+                             configPath + "': " + e.what());
   }
 
-  const auto &root = drogon::app().getCustomConfig();
+  auto config = loadAppConfigFromCurrentApp();
+  config.filePath = configPath;
+  return config;
+}
+
+AppConfig loadAppConfigFromCurrentApp() {
+  auto config = loadAppConfigFromCustomConfig(drogon::app().getCustomConfig());
+  config.filePath = resolveConfigPath();
+  return config;
+}
+
+AppConfig loadAppConfigFromCustomConfig(const Json::Value &root) {
+  AppConfig config;
+
   if (!root.isObject()) {
     throw std::runtime_error("custom_config must be a JSON object");
   }

@@ -34,8 +34,8 @@ void SearchController::search(
     return;
   }
 
-  SearchService svc;
-  auto books = svc.search(q, offset, limit);
+  auto *svc = drogon::app().getPlugin<SearchService>();
+  auto books = svc->search(q, offset, limit);
   Json::Value data(Json::arrayValue);
   for (const auto &b : books)
     data.append(bookJson(b));

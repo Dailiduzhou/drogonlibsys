@@ -1,5 +1,6 @@
 #pragma once
 
+#include <json/value.h>
 #include <string>
 
 namespace libsys {
@@ -33,6 +34,8 @@ struct AppConfig {
 };
 
 std::string resolveConfigPath();
+AppConfig loadAppConfigFromCurrentApp();
+AppConfig loadAppConfigFromCustomConfig(const Json::Value &root);
 AppConfig loadAppConfig();
 
 } // namespace libsys

@@ -9,6 +9,13 @@ static bool verifyPassword(const std::string &hash, const std::string &plain) {
   return hash == plain;
 }
 
+void AuthService::initAndStart(const Json::Value &config) {
+  (void)config;
+}
+
+void AuthService::shutdown() {
+}
+
 std::optional<TokenPair> AuthService::login(const std::string &username,
                                             const std::string &password) {
   auto user = PgClient::findUserByName(username);

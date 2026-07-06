@@ -32,8 +32,8 @@ void BookController::list(
   if (limit <= 0)
     limit = 20;
 
-  BookService svc;
-  auto books = svc.listBooks(offset, limit);
+  auto *svc = drogon::app().getPlugin<BookService>();
+  auto books = svc->listBooks(offset, limit);
   Json::Value data(Json::arrayValue);
   for (const auto &b : books)
     data.append(bookJson(b));
@@ -43,8 +43,8 @@ void BookController::list(
 void BookController::get(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
-  BookService svc;
-  auto book = svc.getBook(id);
+  auto *svc = drogon::app().getPlugin<BookService>();
+  auto book = svc->getBook(id);
   if (!book) {
     cb(ApiResponse::fail(404, "book not found"));
     return;
@@ -70,8 +70,8 @@ void BookController::create(
     cb(ApiResponse::fail(400, "title and author required"));
     return;
   }
-  BookService svc;
-  auto id = svc.createBook(b);
+  auto *svc = drogon::app().getPlugin<BookService>();
+  auto id = svc->createBook(b);
   Json::Value data;
   data["id"] = (Json::Int64)id;
   cb(ApiResponse::ok(data));
@@ -92,8 +92,8 @@ void BookController::update(
   b.description = json->get("description", "").asString();
   b.coverKey = json->get("coverKey", "").asString();
   b.stock = json->get("stock", 0).asInt();
-  BookService svc;
-  if (!svc.updateBook(b)) {
+  auto *svc = drogon::app().getPlugin<BookService>();
+  if (!svc->updateBook(b)) {
     cb(ApiResponse::fail(500, "update failed"));
     return;
   }
@@ -103,21 +103,21 @@ void BookController::update(
 void BookController::remove(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
-  BookService svc;
-  auto book = svc.getBook(id);
+  auto *svc = drogon::app().getPlugin<BookService>();
+  auto book = svc->getBook(id);
   if (!book) {
     cb(ApiResponse::fail(404, "book not found"));
     return;
   }
-  if (!svc.deleteBook(id)) {
+  if (!svc->deleteBook(id)) {
     cb(ApiResponse::fail(500, "delete failed"));
     return;
   }
 
   if (!book->coverKey.empty()) {
     try {
-      OssService oss;
-      oss.deleteCover(book->coverKey);
+      auto *oss = drogon::app().getPlugin<OssService>();
+      oss->deleteCover(book->coverKey);
     } catch (const std::exception &e) {
       LOG_WARN << "failed to remove cover object for deleted book " << id
                << ": " << e.what();
@@ -136,8 +136,8 @@ void BookController::uploadCover(
     return;
   }
 
-  BookService svc;
-  auto book = svc.getBook(id);
+  auto *svc = drogon::app().getPlugin<BookService>();
+  auto book = svc->getBook(id);
   if (!book) {
     cb(ApiResponse::fail(404, "book not found"));
     return;
@@ -148,11 +148,11 @@ void BookController::uploadCover(
   std::string coverUrl;
   const auto oldCoverKey = book->coverKey;
   try {
-    OssService oss;
-    key = oss.uploadCover(
-        id, file.getFileName(), file.getMimeType(),
-        std::string(file.getFileContent().data(), file.getFileContent().size()));
-    coverUrl = oss.coverUrl(key);
+    auto *oss = drogon::app().getPlugin<OssService>();
+    key = oss->uploadCover(id, file.getFileName(), file.getMimeType(),
+                           std::string(file.getFileContent().data(),
+                                       file.getFileContent().size()));
+    coverUrl = oss->coverUrl(key);
   } catch (const std::exception &e) {
     cb(ApiResponse::fail(500, std::string("cover upload failed: ") + e.what()));
     return;
@@ -160,12 +160,12 @@ void BookController::uploadCover(
 
   // 回写数据库 cover_key
   book->coverKey = key;
-  svc.updateBook(*book);
+  svc->updateBook(*book);
 
   if (!oldCoverKey.empty() && oldCoverKey != key) {
     try {
-      OssService oss;
-      oss.deleteCover(oldCoverKey);
+      auto *oss = drogon::app().getPlugin<OssService>();
+      oss->deleteCover(oldCoverKey);
     } catch (const std::exception &e) {
       LOG_WARN << "failed to remove old cover object for book " << id << ": "
                << e.what();

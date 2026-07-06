@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iomanip>
 #include <jwt-cpp/jwt.h>
+#include <jwt-cpp/traits/open-source-parsers-jsoncpp/defaults.h>
 #include <random>
 #include <sstream>
 

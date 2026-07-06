@@ -15,9 +15,9 @@ void AuthController::login(
     cb(ApiResponse::fail(400, "username and password required"));
     return;
   }
-  AuthService svc;
-  auto pair = svc.login(json->get("username", "").asString(),
-                        json->get("password", "").asString());
+  auto *svc = drogon::app().getPlugin<AuthService>();
+  auto pair = svc->login(json->get("username", "").asString(),
+                         json->get("password", "").asString());
   if (!pair) {
     cb(ApiResponse::fail(401, "invalid credentials"));
     return;
@@ -38,8 +38,8 @@ void AuthController::refresh(
     cb(ApiResponse::fail(400, "refreshToken required"));
     return;
   }
-  AuthService svc;
-  auto pair = svc.refresh(json->get("refreshToken", "").asString());
+  auto *svc = drogon::app().getPlugin<AuthService>();
+  auto pair = svc->refresh(json->get("refreshToken", "").asString());
   if (!pair) {
     cb(ApiResponse::fail(401, "invalid or expired refresh token"));
     return;
@@ -63,8 +63,8 @@ void AuthController::logout(
     return;
   }
   std::string token = auth.substr(sizeof(prefix) - 1);
-  AuthService svc;
-  svc.logout(token);
+  auto *svc = drogon::app().getPlugin<AuthService>();
+  svc->logout(token);
   cb(ApiResponse::ok());
 }
 

@@ -5,6 +5,13 @@
 
 namespace libsys {
 
+void OssService::initAndStart(const Json::Value &config) {
+  (void)config;
+}
+
+void OssService::shutdown() {
+}
+
 std::string OssService::uploadCover(int64_t bookId, const std::string &fileName,
                                     const std::string &contentType,
                                     const std::string &fileData) {

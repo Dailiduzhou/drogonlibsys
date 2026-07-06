@@ -15,7 +15,7 @@ template <typename T> class Singleflight {
 public:
   using Factory = std::function<T()>;
 
-  static T do(const std::string &key, Factory factory) {
+  static T execute(const std::string &key, Factory factory) {
     std::shared_ptr<Call> call;
     {
       std::lock_guard<std::mutex> lk(mapMutex());

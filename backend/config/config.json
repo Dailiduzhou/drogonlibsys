@@ -26,6 +26,41 @@
         "maxConnectionNum": 10240,
         "maxConnectionssPerIP": 128
     },
+    "plugins": [
+        {
+            "name": "libsys::InfrastructurePlugin",
+            "dependencies": [],
+            "config": {}
+        },
+        {
+            "name": "libsys::AuthService",
+            "dependencies": [
+                "libsys::InfrastructurePlugin"
+            ],
+            "config": {}
+        },
+        {
+            "name": "libsys::BookService",
+            "dependencies": [
+                "libsys::InfrastructurePlugin"
+            ],
+            "config": {}
+        },
+        {
+            "name": "libsys::SearchService",
+            "dependencies": [
+                "libsys::InfrastructurePlugin"
+            ],
+            "config": {}
+        },
+        {
+            "name": "libsys::OssService",
+            "dependencies": [
+                "libsys::InfrastructurePlugin"
+            ],
+            "config": {}
+        }
+    ],
     "custom_config": {
         "jwt": {
             "secret": "change-me-in-production",

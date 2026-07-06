@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drogon/plugins/Plugin.h>
 #include "libsys/utils/JwtUtils.h"
 #include <optional>
 #include <string>
@@ -8,8 +9,11 @@ namespace libsys {
 
 // 鉴权服务: 登录 / 刷新 / 登出
 // 参见 AGENTS.md 2.1 双 Token 机制 + JWT 黑名单
-class AuthService {
+class AuthService : public drogon::Plugin<AuthService> {
 public:
+  void initAndStart(const Json::Value &config) override;
+  void shutdown() override;
+
   // 登录: 校验用户名密码, 成功返回双 Token
   std::optional<TokenPair> login(const std::string &username,
                                  const std::string &password);
