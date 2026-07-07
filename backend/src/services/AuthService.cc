@@ -93,20 +93,8 @@ std::optional<TokenPair> AuthService::login(const std::string &username,
   if (!user)
     return std::nullopt;
 
-  if (isBcryptHash(user->password)) {
-    if (!verifyPassword(user->password, password)) {
-      return std::nullopt;
-    }
-  } else {
-    if (user->password != password) {
-      return std::nullopt;
-    }
-    auto passwordHash = hashPassword(password);
-    if (passwordHash &&
-        !PgClient::updateUserPasswordHash(user->id, *passwordHash)) {
-      LOG_WARN << "Failed to upgrade legacy plaintext password for user "
-               << user->username;
-    }
+  if (!verifyPassword(user->password, password)) {
+    return std::nullopt;
   }
 
   return JwtUtils::issue(user->id, user->username, user->role);

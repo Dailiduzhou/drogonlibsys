@@ -84,17 +84,6 @@ bool PgClient::createUser(const std::string &username,
   }
 }
 
-bool PgClient::updateUserPasswordHash(int64_t userId,
-                                      const std::string &passwordHash) {
-  try {
-    auto f = g_db->execSqlAsyncFuture(
-        "UPDATE users SET password=$1 WHERE id=$2", passwordHash, userId);
-    return f.get().affectedRows() > 0;
-  } catch (...) {
-    return false;
-  }
-}
-
 std::optional<Book> PgClient::findBookById(int64_t id) {
   auto f = g_db->execSqlAsyncFuture(
       "SELECT id, title, author, description, cover_key, stock, "
