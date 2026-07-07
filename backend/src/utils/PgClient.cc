@@ -8,6 +8,12 @@ namespace libsys {
 namespace {
 drogon::orm::DbClientPtr g_db;
 
+constexpr int kDefaultPageSize = 20;
+
+int normalizedOffset(int offset) { return offset < 0 ? 0 : offset; }
+
+int normalizedLimit(int limit) { return limit <= 0 ? kDefaultPageSize : limit; }
+
 Book rowToBook(const drogon::orm::Row &row) {
   Book b;
   b.id = row["id"].as<int64_t>();
@@ -103,6 +109,8 @@ std::optional<Book> PgClient::findBookById(int64_t id) {
 }
 
 std::vector<Book> PgClient::listBooks(int offset, int limit) {
+  offset = normalizedOffset(offset);
+  limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
       "SELECT id, title, author, description, cover_key, stock, "
       "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
@@ -132,8 +140,7 @@ bool PgClient::updateBook(const Book &b) {
         "UPDATE books SET title=$1, author=$2, description=$3, "
         "cover_key=$4, stock=$5 WHERE id=$6",
         b.title, b.author, b.description, b.coverKey, b.stock, b.id);
-    f.get();
-    return true;
+    return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
   }
@@ -142,8 +149,7 @@ bool PgClient::updateBook(const Book &b) {
 bool PgClient::deleteBook(int64_t id) {
   try {
     auto f = g_db->execSqlAsyncFuture("DELETE FROM books WHERE id=$1", id);
-    f.get();
-    return true;
+    return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
   }
@@ -167,6 +173,8 @@ std::optional<LoanRecord> PgClient::findLoanRecordById(int64_t id) {
 }
 
 std::vector<LoanRecord> PgClient::listLoanRecords(int offset, int limit) {
+  offset = normalizedOffset(offset);
+  limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
       "SELECT id, book_id, user_id, status, "
       "to_char(borrowed_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS borrowed_at, "
@@ -187,6 +195,8 @@ std::vector<LoanRecord> PgClient::listLoanRecords(int offset, int limit) {
 
 std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
                                                         int offset, int limit) {
+  offset = normalizedOffset(offset);
+  limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
       "SELECT id, book_id, user_id, status, "
       "to_char(borrowed_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS borrowed_at, "
@@ -232,8 +242,8 @@ bool PgClient::updateLoanRecord(const LoanRecord &record) {
 
 bool PgClient::deleteLoanRecord(int64_t id) {
   try {
-    auto f = g_db->execSqlAsyncFuture("DELETE FROM loan_records WHERE id=$1",
-                                      id);
+    auto f =
+        g_db->execSqlAsyncFuture("DELETE FROM loan_records WHERE id=$1", id);
     return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
@@ -242,47 +252,46 @@ bool PgClient::deleteLoanRecord(int64_t id) {
 
 BorrowBookResult PgClient::borrowBook(int64_t bookId, int64_t userId) {
   try {
-    auto f = g_db->execSqlAsyncFuture(
-        "WITH book_state AS ("
-        "  SELECT id, stock FROM books WHERE id=$1"
-        "), active_loan AS ("
-        "  SELECT id FROM loan_records "
-        "  WHERE book_id=$1 AND user_id=$2 AND status='borrowed'"
-        "), updated_book AS ("
-        "  UPDATE books SET stock = stock - 1 "
-        "  WHERE id=$1 AND stock > 0 AND NOT EXISTS (SELECT 1 FROM active_loan)"
-        "  RETURNING id"
-        "), inserted AS ("
-        "  INSERT INTO loan_records (book_id, user_id, status, borrowed_at) "
-        "  SELECT id, $2, 'borrowed', now() FROM updated_book "
-        "  RETURNING id"
-        ") "
-        "SELECT EXISTS(SELECT 1 FROM book_state) AS book_exists, "
-        "COALESCE((SELECT stock FROM book_state), -1) AS stock, "
-        "EXISTS(SELECT 1 FROM active_loan) AS has_active_loan, "
-        "COALESCE((SELECT id FROM inserted), 0) AS loan_id",
-        bookId, userId);
+    auto trans = g_db->newTransaction();
+    auto bookResult = trans->execSqlSync(
+        "SELECT stock FROM books WHERE id=$1 FOR UPDATE", bookId);
+    if (bookResult.empty()) {
+      return {BorrowBookStatus::BookNotFound, 0};
+    }
 
-    const auto result = f.get();
-    if (result.empty()) {
+    if (bookResult[0]["stock"].as<int>() <= 0) {
+      return {BorrowBookStatus::OutOfStock, 0};
+    }
+
+    auto activeLoanResult = trans->execSqlSync(
+        "SELECT id FROM loan_records "
+        "WHERE book_id=$1 AND user_id=$2 AND status='borrowed' "
+        "LIMIT 1",
+        bookId, userId);
+    if (!activeLoanResult.empty()) {
+      return {BorrowBookStatus::AlreadyBorrowed, 0};
+    }
+
+    auto updateBookResult =
+        trans->execSqlSync("UPDATE books SET stock = stock - 1 "
+                           "WHERE id=$1 AND stock > 0 "
+                           "RETURNING id",
+                           bookId);
+    if (updateBookResult.empty()) {
+      return {BorrowBookStatus::OutOfStock, 0};
+    }
+
+    auto insertLoanResult = trans->execSqlSync(
+        "INSERT INTO loan_records (book_id, user_id, status, borrowed_at) "
+        "VALUES ($1, $2, 'borrowed', now()) RETURNING id",
+        bookId, userId);
+    if (insertLoanResult.empty()) {
+      trans->rollback();
       return {};
     }
 
-    const auto &row = result[0];
-    const auto loanId = row["loan_id"].as<int64_t>();
-    if (loanId > 0) {
-      return {BorrowBookStatus::Borrowed, loanId};
-    }
-    if (!row["book_exists"].as<bool>()) {
-      return {BorrowBookStatus::BookNotFound, 0};
-    }
-    if (row["has_active_loan"].as<bool>()) {
-      return {BorrowBookStatus::AlreadyBorrowed, 0};
-    }
-    if (row["stock"].as<int>() <= 0) {
-      return {BorrowBookStatus::OutOfStock, 0};
-    }
-    return {};
+    return {BorrowBookStatus::Borrowed,
+            insertLoanResult[0]["id"].as<int64_t>()};
   } catch (...) {
     return {};
   }
@@ -290,39 +299,37 @@ BorrowBookResult PgClient::borrowBook(int64_t bookId, int64_t userId) {
 
 ReturnBookResult PgClient::returnBook(int64_t bookId, int64_t userId) {
   try {
-    auto f = g_db->execSqlAsyncFuture(
-        "WITH active_loan AS ("
-        "  SELECT id FROM loan_records "
-        "  WHERE book_id=$1 AND user_id=$2 AND status='borrowed' "
-        "  ORDER BY id ASC LIMIT 1"
-        "), updated_loan AS ("
-        "  UPDATE loan_records "
-        "  SET status='returned', returned_at=now() "
-        "  WHERE id=(SELECT id FROM active_loan) "
-        "  RETURNING id"
-        "), updated_book AS ("
-        "  UPDATE books SET stock = stock + 1 "
-        "  WHERE id=$1 AND EXISTS (SELECT 1 FROM updated_loan) "
-        "  RETURNING id"
-        ") "
-        "SELECT EXISTS(SELECT 1 FROM books WHERE id=$1) AS book_exists, "
-        "COALESCE((SELECT id FROM updated_loan), 0) AS loan_id",
-        bookId, userId);
-
-    const auto result = f.get();
-    if (result.empty()) {
-      return {};
-    }
-
-    const auto &row = result[0];
-    const auto loanId = row["loan_id"].as<int64_t>();
-    if (loanId > 0) {
-      return {ReturnBookStatus::Returned, loanId};
-    }
-    if (!row["book_exists"].as<bool>()) {
+    auto trans = g_db->newTransaction();
+    auto bookResult = trans->execSqlSync(
+        "SELECT id FROM books WHERE id=$1 FOR UPDATE", bookId);
+    if (bookResult.empty()) {
       return {ReturnBookStatus::BookNotFound, 0};
     }
-    return {ReturnBookStatus::LoanNotFound, 0};
+
+    auto activeLoanResult = trans->execSqlSync(
+        "SELECT id FROM loan_records "
+        "WHERE book_id=$1 AND user_id=$2 AND status='borrowed' "
+        "ORDER BY id ASC LIMIT 1 FOR UPDATE",
+        bookId, userId);
+    if (activeLoanResult.empty()) {
+      return {ReturnBookStatus::LoanNotFound, 0};
+    }
+
+    const auto loanId = activeLoanResult[0]["id"].as<int64_t>();
+    auto updateLoanResult =
+        trans->execSqlSync("UPDATE loan_records "
+                           "SET status='returned', returned_at=now() "
+                           "WHERE id=$1 AND status='borrowed' "
+                           "RETURNING id",
+                           loanId);
+    if (updateLoanResult.empty()) {
+      trans->rollback();
+      return {ReturnBookStatus::LoanNotFound, 0};
+    }
+
+    trans->execSqlSync("UPDATE books SET stock = stock + 1 WHERE id=$1",
+                       bookId);
+    return {ReturnBookStatus::Returned, loanId};
   } catch (...) {
     return {};
   }
@@ -331,6 +338,11 @@ ReturnBookResult PgClient::returnBook(int64_t bookId, int64_t userId) {
 // 搜索: 基于 pg_trgm 索引命中 title/author/description, 按相似度排序
 std::vector<Book> PgClient::search(const std::string &query, int offset,
                                    int limit) {
+  if (query.empty()) {
+    return {};
+  }
+  offset = normalizedOffset(offset);
+  limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
       "SELECT id, title, author, description, cover_key, stock, "
       "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
