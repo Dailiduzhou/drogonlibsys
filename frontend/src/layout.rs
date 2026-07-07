@@ -30,6 +30,10 @@ pub fn NavLayout() -> Element {
                     NavItem { to: Route::Books {}, label: "图书" }
                     NavItem { to: Route::Search {}, label: "搜索" }
                     NavItem { to: Route::Loans {}, label: "借阅" }
+                    if authenticated {
+                        NavItem { to: Route::AdminBooks {}, label: "图书管理" }
+                        NavItem { to: Route::AdminUsers {}, label: "用户管理" }
+                    }
                     div { class: "ml-auto flex items-center gap-3",
                         if authenticated {
                             button {

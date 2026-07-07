@@ -259,6 +259,19 @@ pub async fn register(username: &str, password: &str) -> ApiResult<TokenPair> {
     Ok(pair)
 }
 
+/// Admin-only user creation: calls /api/auth/register but does NOT overwrite
+/// the currently logged-in admin's stored tokens (unlike `register`, which
+/// persists the new session for self-registration/login flows).
+pub async fn admin_create_user(username: &str, password: &str) -> ApiResult<TokenPair> {
+    let body = serde_json::json!({ "username": username, "password": password });
+    let resp = Request::post(&format!("{}/auth/register", API_BASE))
+        .header("Content-Type", "application/json")
+        .body(body.to_string())?
+        .send()
+        .await?;
+    parse_envelope(resp).await
+}
+
 pub async fn refresh(refresh_token: &str) -> ApiResult<TokenPair> {
     let body = serde_json::json!({ "refreshToken": refresh_token });
     let resp = Request::post(&format!("{}/auth/refresh", API_BASE))

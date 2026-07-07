@@ -2,9 +2,9 @@ use dioxus::prelude::*;
 
 use crate::layout::NavLayout;
 use crate::pages::{
-    book_detail::BookDetail, book_edit::BookEdit, book_new::BookNew, books::Books,
-    loan_detail::LoanDetail, loan_new::LoanNew, loans::Loans, login::Login, not_found::NotFound,
-    search::Search,
+    admin_books::AdminBooks, admin_users::AdminUsers, book_detail::BookDetail, book_edit::BookEdit,
+    book_new::BookNew, books::Books, loan_detail::LoanDetail, loan_new::LoanNew, loans::Loans,
+    login::Login, not_found::NotFound, search::Search,
 };
 
 #[derive(Routable, Clone, PartialEq, Debug)]
@@ -31,6 +31,10 @@ pub enum Route {
         LoanNew {},
         #[route("/loans/:id")]
         LoanDetail { id: i64 },
+        #[route("/admin/books")]
+        AdminBooks {},
+        #[route("/admin/users")]
+        AdminUsers {},
     #[end_layout]
     #[route("/:..segments")]
     NotFound { segments: Vec<String> },
@@ -49,6 +53,8 @@ pub fn Home() -> Element {
                 li { Link { to: Route::Search {}, class: "text-indigo-300 hover:underline", "全文搜索" } }
                 li { Link { to: Route::Loans {}, class: "text-indigo-300 hover:underline", "借阅记录" } }
                 li { Link { to: Route::Login {}, class: "text-indigo-300 hover:underline", "登录" } }
+                li { Link { to: Route::AdminBooks {}, class: "text-indigo-300 hover:underline", "管理：图书（管理员）" } }
+                li { Link { to: Route::AdminUsers {}, class: "text-indigo-300 hover:underline", "管理：用户（管理员）" } }
             }
         }
     }

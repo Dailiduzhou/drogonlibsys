@@ -1,3 +1,5 @@
+pub mod admin_books;
+pub mod admin_users;
 pub mod book_detail;
 pub mod book_edit;
 pub mod book_new;
