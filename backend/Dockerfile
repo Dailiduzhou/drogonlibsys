@@ -50,6 +50,13 @@ RUN curl -fsSL https://xmake.io/shget.text | bash \
   && . ~/.xmake/profile \
   && xmake --version
 
+# 纯 C 模块 (libxcrypt bcrypt) 与 sqlite3 链接所需的 dev 包
+# 单独一层, 不影响 drogon 编译缓存
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  libcrypt-dev \
+  libsqlite3-dev \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY . .
