@@ -49,12 +49,9 @@ std::string serialize(const Book &b) {
 }
 } // namespace
 
-void BookService::initAndStart(const Json::Value &config) {
-  (void)config;
-}
+void BookService::initAndStart(const Json::Value &config) { (void)config; }
 
-void BookService::shutdown() {
-}
+void BookService::shutdown() {}
 
 std::string BookService::bookKey(int64_t id) {
   return "book:" + std::to_string(id);
@@ -80,8 +77,8 @@ std::optional<Book> BookService::getBook(int64_t id) {
   }
 
   // 2. 缓存未命中 -> Singleflight 合并回源请求, 仅一个请求查 PG
-  auto opt =
-      Singleflight<std::optional<Book>>::execute(key, [&]() -> std::optional<Book> {
+  auto opt = Singleflight<std::optional<Book>>::execute(
+      key, [&]() -> std::optional<Book> {
         auto book = PgClient::findBookById(id);
         if (book) {
           RedisClient::set(key, serialize(*book), kCacheTtl);

@@ -29,7 +29,7 @@ std::optional<std::string> hashPassword(const std::string &plain) {
     return std::nullopt;
   }
 
-  crypt_data data {};
+  crypt_data data{};
   char *hashed = crypt_rn(plain.c_str(), setting, &data, sizeof(data));
   if (!hashed || hashed[0] == '*') {
     return std::nullopt;
@@ -43,7 +43,7 @@ bool verifyPassword(const std::string &hash, const std::string &plain) {
     return false;
   }
 
-  crypt_data data {};
+  crypt_data data{};
   char *hashed = crypt_rn(plain.c_str(), hash.c_str(), &data, sizeof(data));
   return hashed && hashed[0] != '*' && hash == hashed;
 }
@@ -55,12 +55,9 @@ bool isValidCredentialInput(const std::string &username,
 }
 } // namespace
 
-void AuthService::initAndStart(const Json::Value &config) {
-  (void)config;
-}
+void AuthService::initAndStart(const Json::Value &config) { (void)config; }
 
-void AuthService::shutdown() {
-}
+void AuthService::shutdown() {}
 
 RegisterResult AuthService::registerUser(const std::string &username,
                                          const std::string &password) {

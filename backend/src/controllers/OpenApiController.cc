@@ -1,7 +1,7 @@
 #include "controllers/OpenApiController.h"
 
-#include <drogon/HttpResponse.h>
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpResponse.h>
 #include <fstream>
 #include <sstream>
 

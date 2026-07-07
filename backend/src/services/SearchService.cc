@@ -16,24 +16,22 @@ std::string searchKey(const std::string &q, int offset, int limit) {
 }
 } // namespace
 
-void SearchService::initAndStart(const Json::Value &config) {
-  (void)config;
-}
+void SearchService::initAndStart(const Json::Value &config) { (void)config; }
 
-void SearchService::shutdown() {
-}
+void SearchService::shutdown() {}
 
 std::vector<Book> SearchService::search(const std::string &query, int offset,
                                         int limit) {
   std::string key = searchKey(query, offset, limit);
 
   // Singleflight 合并相同关键词的并发搜索请求, 防缓存击穿
-  return Singleflight<std::vector<Book>>::execute(key, [&]() -> std::vector<Book> {
-    // TODO: 命中 Redis 缓存时直接返回; 当前简化为直接查 PG (pg_trgm 索引)
-    auto books = PgClient::search(query, offset, limit);
-    // 缓存序列化结果可在此写入 Redis (kSearchCacheTtl)
-    return books;
-  });
+  return Singleflight<std::vector<Book>>::execute(
+      key, [&]() -> std::vector<Book> {
+        // TODO: 命中 Redis 缓存时直接返回; 当前简化为直接查 PG (pg_trgm 索引)
+        auto books = PgClient::search(query, offset, limit);
+        // 缓存序列化结果可在此写入 Redis (kSearchCacheTtl)
+        return books;
+      });
 }
 
 } // namespace libsys
