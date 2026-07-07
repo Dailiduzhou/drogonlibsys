@@ -95,7 +95,7 @@ void AuthController::logout(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
   auto auth = req->getHeader("Authorization");
-  constexpr const char *prefix = "Bearer ";
+  constexpr char prefix[] = "Bearer ";
   if (auth.size() <= sizeof(prefix) - 1 ||
       auth.compare(0, sizeof(prefix) - 1, prefix) != 0) {
     cb(ApiResponse::fail(400, "missing token"));

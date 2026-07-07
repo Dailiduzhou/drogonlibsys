@@ -11,7 +11,7 @@ void JwtAuthFilter::doFilter(const drogon::HttpRequestPtr &req,
                              drogon::FilterCallback &&fcb,
                              drogon::FilterChainCallback &&fccb) {
   auto auth = req->getHeader("Authorization");
-  constexpr const char *prefix = "Bearer ";
+  constexpr char prefix[] = "Bearer ";
   if (auth.size() <= sizeof(prefix) - 1 ||
       auth.compare(0, sizeof(prefix) - 1, prefix) != 0) {
     fcb(ApiResponse::fail(401, "missing or invalid Authorization header"));
