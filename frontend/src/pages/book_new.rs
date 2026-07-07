@@ -3,15 +3,22 @@ use dioxus::prelude::*;
 use crate::api::{self, BookCreate};
 use crate::routes::Route;
 
+#[derive(Default, Clone)]
+struct SelectedFile {
+    name: String,
+    content_type: Option<String>,
+    bytes: Vec<u8>,
+}
+
 #[component]
 pub fn BookNew() -> Element {
     let title = use_signal(String::new);
     let author = use_signal(String::new);
     let mut description = use_signal(String::new);
-    let cover_key = use_signal(String::new);
     let mut stock = use_signal(|| 0_i32);
     let mut error = use_signal(|| Option::<String>::None);
     let mut loading = use_signal(|| false);
+    let mut selected_file = use_signal(|| Option::<SelectedFile>::None);
     let nav = use_navigator();
 
     let mut submit = move |_| {
@@ -25,17 +32,53 @@ pub fn BookNew() -> Element {
             title: title(),
             author: author(),
             description: description(),
-            cover_key: cover_key(),
+            cover_key: String::new(),
             stock: stock(),
         };
+        let file_opt = selected_file();
         spawn(async move {
             match api::create_book(payload).await {
                 Ok(res) => {
-                    nav.push(Route::BookDetail { id: res.id });
+                    let book_id = res.id;
+                    if let Some(file) = file_opt {
+                        match api::upload_cover(book_id, &file.name, file.content_type.as_deref(), file.bytes).await {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error.set(Some(format!("图书已创建，但封面上传失败：{e}")));
+                                loading.set(false);
+                                return;
+                            }
+                        }
+                    }
+                    nav.push(Route::BookDetail { id: book_id });
                 }
                 Err(e) => error.set(Some(e.to_string())),
             }
             loading.set(false);
+        });
+    };
+
+    let mut handle_file = move |ev: Event<FormData>| {
+        let files = ev.files();
+        let Some(file) = files.into_iter().next() else {
+            selected_file.set(None);
+            return;
+        };
+        spawn(async move {
+            let name = file.name();
+            let ct = file.content_type();
+            match file.read_bytes().await {
+                Ok(bytes) => {
+                    selected_file.set(Some(SelectedFile {
+                        name,
+                        content_type: ct,
+                        bytes: bytes.to_vec(),
+                    }));
+                }
+                Err(_) => {
+                    selected_file.set(None);
+                }
+            }
         });
     };
 
@@ -49,7 +92,18 @@ pub fn BookNew() -> Element {
                 onsubmit: move |ev| { ev.prevent_default(); submit(()); },
                 TextField { label: "标题", value: title }
                 TextField { label: "作者", value: author }
-                TextField { label: "封面 Key（可选）", value: cover_key }
+                div { class: "mb-4",
+                    label { class: "block text-sm text-slate-300 mb-1", "封面图片" }
+                    input {
+                        class: "block text-slate-300 text-sm",
+                        r#type: "file",
+                        accept: "image/*",
+                        onchange: move |ev| handle_file(ev),
+                    }
+                    if let Some(file) = selected_file() {
+                        p { class: "text-xs text-slate-400 mt-1", "已选择：{file.name}" }
+                    }
+                }
                 div { class: "mb-4",
                     label { class: "block text-sm text-slate-300 mb-1", "库存" }
                     input {
