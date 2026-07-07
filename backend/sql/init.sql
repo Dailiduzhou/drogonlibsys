@@ -65,3 +65,7 @@ CREATE TRIGGER trg_books_updated_at BEFORE UPDATE ON books
 DROP TRIGGER IF EXISTS trg_loan_records_updated_at ON loan_records;
 CREATE TRIGGER trg_loan_records_updated_at BEFORE UPDATE ON loan_records
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+INSERT INTO users (username, password, role)
+VALUES ('admin', '$2y$12$6sTLncSjnX3iFNJ2zv0NhO/.OSdEMRUqiAc/mb5ebc34rhutRADDC', 'admin')
+ON CONFLICT (username) DO NOTHING;

@@ -88,7 +88,7 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
 
   frontend:
-    image: dailiduzhou/drogonlibsys-frontend:1.0
+    image: dailiduzhou/drogonlibsys-frontend:1.1
     container_name: libsys-frontend
     depends_on:
       - backend
