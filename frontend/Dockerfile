@@ -6,6 +6,9 @@ RUN rustup target add wasm32-unknown-unknown \
 WORKDIR /app
 
 COPY Cargo.toml ./
+COPY Cargo.lock ./
+COPY Dioxus.toml ./
+COPY assets ./assets
 COPY src ./src
 
 RUN dx build --platform web --release

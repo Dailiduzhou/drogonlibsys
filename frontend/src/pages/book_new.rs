@@ -5,10 +5,10 @@ use crate::routes::Route;
 
 #[component]
 pub fn BookNew() -> Element {
-    let mut title = use_signal(String::new);
-    let mut author = use_signal(String::new);
+    let title = use_signal(String::new);
+    let author = use_signal(String::new);
     let mut description = use_signal(String::new);
-    let mut cover_key = use_signal(String::new);
+    let cover_key = use_signal(String::new);
     let mut stock = use_signal(|| 0_i32);
     let mut error = use_signal(|| Option::<String>::None);
     let mut loading = use_signal(|| false);
