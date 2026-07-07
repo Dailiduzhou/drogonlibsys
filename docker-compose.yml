@@ -60,7 +60,7 @@ services:
     restart: "no"
 
   backend:
-    image: dailiduzhou/drogonlibsys-backend:1.0
+    image: dailiduzhou/drogonlibsys-backend:1.1
     container_name: libsys-backend
     depends_on:
       postgres:

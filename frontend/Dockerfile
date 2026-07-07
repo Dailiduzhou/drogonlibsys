@@ -15,7 +15,7 @@ RUN dx build --platform web --release
 
 FROM nginx:1.27-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/target/dx/frontend/release/web/public /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
