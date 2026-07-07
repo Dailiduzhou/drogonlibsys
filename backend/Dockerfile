@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   git \
   libcurl4-openssl-dev \
   libhiredis-dev \
+  libpq-dev \
+  libsqlite3-dev \
   libssl-dev \
   libyaml-cpp-dev \
   ninja-build \
@@ -32,7 +34,7 @@ WORKDIR /app
 COPY . .
 
 RUN --mount=type=cache,target=/root/.xmake/cache \
-    mkdir -p logs \
+  mkdir -p logs \
   && . ~/.xmake/profile \
   && if [ -n "$XMAKE_PKG_MIRROR" ]; then xmake g --pkg_mirror="$XMAKE_PKG_MIRROR" -y; fi \
   && xmake f -m release -y \

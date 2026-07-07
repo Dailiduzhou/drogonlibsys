@@ -12,7 +12,9 @@ namespace libsys {
 // PostgreSQL 数据访问层 (基于 Drogon ORM)
 class PgClient {
 public:
-  static void init();
+  static void init(const std::string &host, int port, const std::string &dbname,
+                   const std::string &user, const std::string &password,
+                   int connNumber);
 
   // ---- 用户 ----
   static std::optional<User> findUserByName(const std::string &username);

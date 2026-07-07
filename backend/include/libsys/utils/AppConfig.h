@@ -18,6 +18,15 @@ struct RedisConfig {
   std::string password;
 };
 
+struct PostgresConfig {
+  std::string host;
+  int port{5432};
+  std::string dbname;
+  std::string user;
+  std::string password;
+  int connNumber{8};
+};
+
 struct MinioConfig {
   std::string endpoint;
   std::string accessKey;
@@ -31,6 +40,7 @@ struct AppConfig {
   std::string filePath;
   JwtConfig jwt;
   RedisConfig redis;
+  PostgresConfig postgres;
   MinioConfig minio;
 };
 

@@ -20,7 +20,9 @@ void InfrastructurePlugin::initAndStart(const Json::Value &config) {
                  appConfig.jwt.refreshTtlSeconds);
   RedisClient::init(appConfig.redis.host, appConfig.redis.port,
                     appConfig.redis.password);
-  PgClient::init();
+  PgClient::init(appConfig.postgres.host, appConfig.postgres.port,
+                 appConfig.postgres.dbname, appConfig.postgres.user,
+                 appConfig.postgres.password, appConfig.postgres.connNumber);
   MinioClient::init(appConfig.minio.endpoint, appConfig.minio.accessKey,
                     appConfig.minio.secretKey, appConfig.minio.bucket,
                     appConfig.minio.region, appConfig.minio.secure);

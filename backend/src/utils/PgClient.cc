@@ -47,7 +47,16 @@ LoanRecord rowToLoanRecord(const drogon::orm::Row &row) {
 std::string str(const std::string &s) { return s; }
 } // namespace
 
-void PgClient::init() { g_db = drogon::app().getDbClient("pg"); }
+void PgClient::init(const std::string &host, int port,
+                    const std::string &dbname, const std::string &user,
+                    const std::string &password, int connNumber) {
+  std::string connStr = "host=" + host + " port=" + std::to_string(port) +
+                        " dbname=" + dbname + " user=" + user +
+                        " password=" + password;
+  g_db = drogon::orm::DbClient::newPgClient(connStr, connNumber);
+  LOG_INFO << "PgClient initialized: host=" << host << " port=" << port
+           << " dbname=" << dbname << " connNumber=" << connNumber;
+}
 
 std::optional<User> PgClient::findUserByName(const std::string &username) {
   auto f = g_db->execSqlAsyncFuture(

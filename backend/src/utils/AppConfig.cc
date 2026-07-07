@@ -166,6 +166,29 @@ void applyEnvOverrides(AppConfig &config) {
     config.redis.password = value;
   }
 
+  if (const char *value = readEnv("LIBSYS_PG_HOST"); value != nullptr) {
+    config.postgres.host = value;
+  }
+  if (const int value = parsePositiveIntEnv("LIBSYS_PG_PORT"); value > 0) {
+    if (value > 65535) {
+      throw std::runtime_error("LIBSYS_PG_PORT must be in range 1-65535");
+    }
+    config.postgres.port = value;
+  }
+  if (const char *value = readEnv("LIBSYS_PG_DBNAME"); value != nullptr) {
+    config.postgres.dbname = value;
+  }
+  if (const char *value = readEnv("LIBSYS_PG_USER"); value != nullptr) {
+    config.postgres.user = value;
+  }
+  if (const char *value = readEnv("LIBSYS_PG_PASSWORD"); value != nullptr) {
+    config.postgres.password = value;
+  }
+  if (const int value = parsePositiveIntEnv("LIBSYS_PG_CONN_NUMBER");
+      value > 0) {
+    config.postgres.connNumber = value;
+  }
+
   if (const char *value = readEnv("LIBSYS_MINIO_ENDPOINT"); value != nullptr) {
     config.minio.endpoint = value;
   }
@@ -249,6 +272,23 @@ AppConfig loadAppConfigFromCustomConfig(const Json::Value &root) {
       throw std::runtime_error("custom_config.redis.password must be a string");
     }
     config.redis.password = redis["password"].asString();
+  }
+
+  const auto &pg = requireObject(root, "", "postgres");
+  config.postgres.host = requireString(pg, "postgres", "host");
+  config.postgres.port = requirePort(pg, "postgres", "port");
+  config.postgres.dbname = requireString(pg, "postgres", "dbname");
+  config.postgres.user = requireString(pg, "postgres", "user");
+  if (pg.isMember("password")) {
+    if (!pg["password"].isString()) {
+      throw std::runtime_error(
+          "custom_config.postgres.password must be a string");
+    }
+    config.postgres.password = pg["password"].asString();
+  }
+  if (pg.isMember("connNumber")) {
+    config.postgres.connNumber =
+        requirePositiveInt(pg, "postgres", "connNumber");
   }
 
   const auto &minio = requireObject(root, "", "minio");

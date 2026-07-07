@@ -5,19 +5,6 @@
             "port": 8080
         }
     ],
-    "db_clients": [
-        {
-            "name": "pg",
-            "rdbms": "postgresql",
-            "host": "postgres",
-            "port": 5432,
-            "dbname": "libsys",
-            "user": "libsys",
-            "passwd": "libsys",
-            "is_fast": true,
-            "connNumber": 8
-        }
-    ],
     "app": {
         "log": {
             "logPath": "./logs/",
@@ -79,6 +66,14 @@
             "host": "redis",
             "port": 6379,
             "password": ""
+        },
+        "postgres": {
+            "host": "postgres",
+            "port": 5432,
+            "dbname": "libsys",
+            "user": "libsys",
+            "password": "libsys",
+            "connNumber": 8
         },
         "minio": {
             "endpoint": "minio:9000",
