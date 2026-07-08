@@ -40,24 +40,27 @@ TokenPair JwtUtils::issue(int64_t userId, const std::string &username,
   pair.userId = userId;
   pair.username = username;
   pair.role = role;
-  pair.jti = genJti();
+  pair.accessJti = genJti();
+  pair.refreshJti = genJti();
   auto now = std::chrono::system_clock::now();
 
-  auto build = [&](int ttl) {
+  auto build = [&](int ttl, const std::string &jti,
+                   const std::string &tokenType) {
     return jwt::create()
         .set_issuer(g_issuer)
         .set_type("JWT")
         .set_issued_at(now)
         .set_expires_at(now + std::chrono::seconds(ttl))
-        .set_id(pair.jti)
+        .set_id(jti)
+        .set_payload_claim("typ", jwt::claim(tokenType))
         .set_payload_claim("uid", jwt::claim(std::to_string(userId)))
         .set_payload_claim("name", jwt::claim(username))
         .set_payload_claim("role", jwt::claim(role))
         .sign(jwt::algorithm::hs256{g_secret});
   };
 
-  pair.accessToken = build(g_accessTtl);
-  pair.refreshToken = build(g_refreshTtl);
+  pair.accessToken = build(g_accessTtl, pair.accessJti, "access");
+  pair.refreshToken = build(g_refreshTtl, pair.refreshJti, "refresh");
   pair.accessExpiresAt =
       std::chrono::duration_cast<std::chrono::seconds>(
           (now + std::chrono::seconds(g_accessTtl)).time_since_epoch())
@@ -69,7 +72,8 @@ TokenPair JwtUtils::issue(int64_t userId, const std::string &username,
   return pair;
 }
 
-bool JwtUtils::verify(const std::string &token, JwtClaims &out) {
+bool JwtUtils::verify(const std::string &token, JwtClaims &out,
+                      const std::string &expectedType) {
   try {
     auto decoded = jwt::decode(token);
     auto verifier = jwt::verify()
@@ -78,6 +82,10 @@ bool JwtUtils::verify(const std::string &token, JwtClaims &out) {
     verifier.verify(decoded);
 
     out.jti = decoded.get_id();
+    out.tokenType = decoded.get_payload_claim("typ").as_string();
+    if (!expectedType.empty() && out.tokenType != expectedType) {
+      return false;
+    }
     out.userId = std::stoll(decoded.get_payload_claim("uid").as_string());
     out.username = decoded.get_payload_claim("name").as_string();
     out.role = decoded.get_payload_claim("role").as_string();

@@ -162,7 +162,17 @@ void BookController::uploadCover(
 
   // 回写数据库 cover_key
   book->coverKey = key;
-  svc->updateBook(*book);
+  if (!svc->updateBook(*book)) {
+    try {
+      auto *oss = drogon::app().getPlugin<OssService>();
+      oss->deleteCover(key);
+    } catch (const std::exception &e) {
+      LOG_WARN << "failed to rollback uploaded cover for book " << id << ": "
+               << e.what();
+    }
+    cb(ApiResponse::fail(500, "cover metadata update failed"));
+    return;
+  }
 
   if (!oldCoverKey.empty() && oldCoverKey != key) {
     try {

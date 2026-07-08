@@ -112,7 +112,10 @@ void AuthController::logout(
   }
   std::string token = auth.substr(sizeof(prefix) - 1);
   auto *svc = drogon::app().getPlugin<AuthService>();
-  svc->logout(token);
+  if (!svc->logout(token)) {
+    cb(ApiResponse::fail(401, "invalid or expired token"));
+    return;
+  }
   cb(ApiResponse::ok());
 }
 
