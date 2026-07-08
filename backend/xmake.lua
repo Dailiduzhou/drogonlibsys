@@ -21,7 +21,10 @@ end
 add_requires("drogon", { system = true })
 add_requires("jwt-cpp", "libxcrypt")
 add_requires("yaml-cpp", { system = true })
-add_requires("aws-sdk-cpp", { configs = { build_only = "s3" } })
+-- aws-sdk-cpp: 仅用 S3 的 PutObject/DeleteObject/GeneratePresignedUrl.
+-- 用 shared 动态库, 避免静态库中 SelectObjectContent 等未使用方法
+-- 引入 aws-cpp-sdk-eventstream / aws-c-event-stream 未链接符号的问题.
+add_requires("aws-sdk-cpp", { configs = { build_only = "s3", shared = true } })
 add_requires("hiredis", { system = true })
 
 -- 纯 C 子模块: 密码哈希 (bcrypt via libxcrypt), 与 Drogon 解耦

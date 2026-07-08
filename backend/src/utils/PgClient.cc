@@ -44,8 +44,6 @@ LoanRecord rowToLoanRecord(const drogon::orm::Row &row) {
   record.updatedAt = row["updated_at"].as<std::string>();
   return record;
 }
-
-std::string str(const std::string &s) { return s; }
 } // namespace
 
 void PgClient::init(const std::string &host, int port,
@@ -327,7 +325,7 @@ int64_t PgClient::createLoanRecord(const LoanRecord &record) {
       "(book_id, user_id, status, borrowed_at, returned_at) "
       "VALUES ($1, $2, $3, $4, $5) RETURNING id",
       record.bookId, record.userId, record.status, record.borrowedAt,
-      record.returnedAt ? str(*record.returnedAt) : nullptr);
+      record.returnedAt);
   auto r = f.get();
   return r[0]["id"].as<int64_t>();
 }
@@ -338,7 +336,7 @@ bool PgClient::updateLoanRecord(const LoanRecord &record) {
         "UPDATE loan_records SET book_id=$1, user_id=$2, status=$3, "
         "borrowed_at=$4, returned_at=$5 WHERE id=$6",
         record.bookId, record.userId, record.status, record.borrowedAt,
-        record.returnedAt ? str(*record.returnedAt) : nullptr, record.id);
+        record.returnedAt, record.id);
     return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
