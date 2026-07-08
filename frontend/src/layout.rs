@@ -8,7 +8,9 @@ use crate::routes::Route;
 pub fn NavLayout() -> Element {
     let mut auth_state = auth::use_auth();
     let nav = use_navigator();
-    let authenticated = auth_state.read().is_authenticated();
+    let auth = auth_state.read();
+    let authenticated = auth.is_authenticated();
+    let is_admin = auth.is_admin();
 
     let logout = move |_| {
         spawn(async move {
@@ -30,7 +32,7 @@ pub fn NavLayout() -> Element {
                     NavItem { to: Route::Books {}, label: "图书" }
                     NavItem { to: Route::Search {}, label: "搜索" }
                     NavItem { to: Route::Loans {}, label: "借阅" }
-                    if authenticated {
+                    if authenticated && is_admin {
                         NavItem { to: Route::AdminBooks {}, label: "图书管理" }
                         NavItem { to: Route::AdminUsers {}, label: "用户管理" }
                     }

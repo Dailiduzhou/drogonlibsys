@@ -31,10 +31,7 @@ pub fn Login() -> Element {
             };
             match result {
                 Ok(pair) => {
-                    auth_state.set(AuthState {
-                        access_token: Some(pair.access_token),
-                        refresh_token: Some(pair.refresh_token),
-                    });
+                    auth_state.set(AuthState::from_tokens(&pair));
                     nav.push(Route::Books {});
                 }
                 Err(e) => error.set(Some(e.to_string())),

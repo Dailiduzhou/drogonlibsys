@@ -35,6 +35,20 @@ pub fn AdminBooks() -> Element {
         };
     }
 
+    if !auth_state.read().is_admin() {
+        return rsx! {
+            div { class: "p-6 max-w-3xl mx-auto",
+                h1 { class: "text-2xl font-bold text-white mb-4", "图书管理（管理员）" }
+                p { class: "text-red-400 mb-4", "仅管理员可访问此页面。" }
+                Link {
+                    to: Route::Books {},
+                    class: "px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm",
+                    "返回图书列表"
+                }
+            }
+        };
+    }
+
     rsx! {
         div { class: "p-6",
             div { class: "flex items-center justify-between mb-6",

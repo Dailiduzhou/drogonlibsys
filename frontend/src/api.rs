@@ -1,7 +1,9 @@
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
 
-use crate::auth::{clear_tokens, load_access_token, save_tokens};
+use crate::auth::{
+    clear_tokens, load_access_token, load_refresh_token, save_tokens, save_tokens_only,
+};
 
 pub const API_BASE: &str = match option_env!("LIBSYS_API_BASE") {
     Some(base) => base,
@@ -28,6 +30,12 @@ pub struct TokenPair {
     pub access_expires_at: i64,
     #[serde(rename = "refreshExpiresAt", default)]
     pub refresh_expires_at: i64,
+    #[serde(rename = "userId", default)]
+    pub user_id: i64,
+    #[serde(default)]
+    pub username: String,
+    #[serde(default)]
+    pub role: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -125,6 +133,22 @@ pub struct LoanUpdate {
     pub borrowed_at: String,
     #[serde(rename = "returnedAt", default, skip_serializing_if = "Option::is_none")]
     pub returned_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct User {
+    #[serde(default)]
+    pub id: i64,
+    #[serde(default)]
+    pub username: String,
+    #[serde(default)]
+    pub role: String,
+    #[serde(rename = "activeLoans", default)]
+    pub active_loans: i64,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: String,
+    #[serde(rename = "updatedAt", default)]
+    pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -235,6 +259,31 @@ fn with_auth(req: gloo_net::http::RequestBuilder) -> gloo_net::http::RequestBuil
     req
 }
 
+/// 发送受保护请求, 命中 401 时静默 refresh 一次并重试.
+///
+/// `build` 每次调用都构建并返回一个新的 `Request` (含 Authorization + body).
+/// 因为 gloo 的 `RequestBuilder::body` 会消耗 builder, 闭包内须完整 `.body(..)`
+/// 把 builder 转成 `Request`; 重试时只需再次调用 `build()` 即可重建.
+async fn send_guarded<F>(build: F) -> Result<gloo_net::http::Response, gloo_net::Error>
+where
+    F: Fn() -> Result<gloo_net::http::Request, gloo_net::Error>,
+{
+    let resp = build()?.send().await?;
+    if resp.status() != 401 {
+        return Ok(resp);
+    }
+
+    // 401 -> 尝试静默刷新; 失败则原样返回 401 响应交由 parse_* 报错,
+    // 并清空本地凭证以触发跳转登录.
+    match try_refresh().await {
+        Ok(()) => build()?.send().await, // 刷新成功, 重建并重发一次 (且仅一次)
+        Err(()) => {
+            clear_tokens();
+            Ok(resp)
+        }
+    }
+}
+
 pub async fn login(username: &str, password: &str) -> ApiResult<TokenPair> {
     let body = serde_json::json!({ "username": username, "password": password });
     let resp = Request::post(&format!("{}/auth/login", API_BASE))
@@ -272,6 +321,8 @@ pub async fn admin_create_user(username: &str, password: &str) -> ApiResult<Toke
     parse_envelope(resp).await
 }
 
+/// 显式刷新接口 (供 UI 调用). 仅刷新 token, user 上下文保持不变.
+#[allow(dead_code)]
 pub async fn refresh(refresh_token: &str) -> ApiResult<TokenPair> {
     let body = serde_json::json!({ "refreshToken": refresh_token });
     let resp = Request::post(&format!("{}/auth/refresh", API_BASE))
@@ -282,6 +333,40 @@ pub async fn refresh(refresh_token: &str) -> ApiResult<TokenPair> {
     let pair: TokenPair = parse_envelope(resp).await?;
     save_tokens(&pair);
     Ok(pair)
+}
+
+/// 静默刷新: 用 localStorage 中的 refresh token 换新的 token 对.
+/// 成功只更新 token (保留 user 上下文), 失败则清空所有凭证.
+/// 供 send_guarded 拦截 401 时自动重试使用.
+async fn try_refresh() -> Result<(), ()> {
+    let rt = match load_refresh_token() {
+        Some(t) if !t.is_empty() => t,
+        _ => return Err(()),
+    };
+    let body = serde_json::json!({ "refreshToken": rt });
+    let resp = match Request::post(&format!("{}/auth/refresh", API_BASE))
+        .header("Content-Type", "application/json")
+        .body(body.to_string())
+    {
+        Ok(b) => b,
+        Err(_) => return Err(()),
+    };
+    let resp = match resp.send().await {
+        Ok(r) => r,
+        Err(_) => return Err(()),
+    };
+    if resp.status() != 200 {
+        return Err(());
+    }
+    let pair: TokenPair = match parse_envelope(resp).await {
+        Ok(p) => p,
+        Err(_) => return Err(()),
+    };
+    // refresh 响应回带 user 上下文 (后端 issue 会填 userId/username/role);
+    // 但为稳妥起见, 这里只覆盖 token, 保留调用者原有的 user 上下文,
+    // 避免后端某天不回 role 时把本地 role 清掉.
+    save_tokens_only(&pair.access_token, &pair.refresh_token);
+    Ok(())
 }
 
 pub async fn logout() -> ApiResult<()> {
@@ -308,85 +393,92 @@ pub async fn get_book(id: i64) -> ApiResult<Book> {
 pub async fn create_book(input: BookCreate) -> ApiResult<IdOnly> {
     let body = serde_json::to_string(&input)
         .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
-    let resp = with_auth(Request::post(&format!("{}/books", API_BASE)))
-        .header("Content-Type", "application/json")
-        .body(body)?
-        .send()
-        .await?;
+    let url = format!("{}/books", API_BASE);
+    let body = body.clone();
+    let resp = send_guarded(move || {
+        with_auth(Request::post(&url))
+            .header("Content-Type", "application/json")
+            .body(body.clone())
+    })
+    .await?;
     parse_envelope(resp).await
 }
 
 pub async fn update_book(id: i64, input: BookUpdate) -> ApiResult<()> {
     let body = serde_json::to_string(&input)
         .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
-    let resp = with_auth(Request::put(&format!("{}/books/{id}", API_BASE)))
-        .header("Content-Type", "application/json")
-        .body(body)?
-        .send()
-        .await?;
+    let url = format!("{}/books/{id}", API_BASE);
+    let body = body.clone();
+    let resp = send_guarded(move || {
+        with_auth(Request::put(&url))
+            .header("Content-Type", "application/json")
+            .body(body.clone())
+    })
+    .await?;
     parse_empty(resp).await
 }
 
 pub async fn delete_book(id: i64) -> ApiResult<()> {
-    let resp = with_auth(Request::delete(&format!("{}/books/{id}", API_BASE)))
-        .send()
-        .await?;
+    let url = format!("{}/books/{id}", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::delete(&url)).build()).await?;
     parse_empty(resp).await
 }
 
 pub async fn borrow_book(id: i64) -> ApiResult<LoanRecord> {
-    let resp = with_auth(Request::post(&format!("{}/books/{id}/borrow", API_BASE)))
-        .send()
-        .await?;
+    let url = format!("{}/books/{id}/borrow", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::post(&url)).build()).await?;
     parse_envelope(resp).await
 }
 
 pub async fn return_book(id: i64) -> ApiResult<LoanRecord> {
-    let resp = with_auth(Request::post(&format!("{}/books/{id}/return", API_BASE)))
-        .send()
-        .await?;
+    let url = format!("{}/books/{id}/return", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::post(&url)).build()).await?;
     parse_envelope(resp).await
 }
 
 pub async fn list_loans(offset: i32, limit: i32) -> ApiResult<Vec<LoanRecord>> {
     let url = format!("{}/loans?offset={offset}&limit={limit}", API_BASE);
-    let resp = with_auth(Request::get(&url)).send().await?;
+    let resp = send_guarded(move || with_auth(Request::get(&url)).build()).await?;
     parse_envelope(resp).await
 }
 
 pub async fn create_loan(input: LoanCreate) -> ApiResult<IdOnly> {
     let body = serde_json::to_string(&input)
         .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
-    let resp = with_auth(Request::post(&format!("{}/loans", API_BASE)))
-        .header("Content-Type", "application/json")
-        .body(body)?
-        .send()
-        .await?;
+    let url = format!("{}/loans", API_BASE);
+    let body = body.clone();
+    let resp = send_guarded(move || {
+        with_auth(Request::post(&url))
+            .header("Content-Type", "application/json")
+            .body(body.clone())
+    })
+    .await?;
     parse_envelope(resp).await
 }
 
 pub async fn get_loan(id: i64) -> ApiResult<LoanRecord> {
-    let resp = with_auth(Request::get(&format!("{}/loans/{id}", API_BASE)))
-        .send()
-        .await?;
+    let url = format!("{}/loans/{id}", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::get(&url)).build()).await?;
     parse_envelope(resp).await
 }
 
 pub async fn update_loan(id: i64, input: LoanUpdate) -> ApiResult<()> {
     let body = serde_json::to_string(&input)
         .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
-    let resp = with_auth(Request::put(&format!("{}/loans/{id}", API_BASE)))
-        .header("Content-Type", "application/json")
-        .body(body)?
-        .send()
-        .await?;
+    let url = format!("{}/loans/{id}", API_BASE);
+    let body = body.clone();
+    let resp = send_guarded(move || {
+        with_auth(Request::put(&url))
+            .header("Content-Type", "application/json")
+            .body(body.clone())
+    })
+    .await?;
     parse_empty(resp).await
 }
 
 pub async fn delete_loan(id: i64) -> ApiResult<()> {
-    let resp = with_auth(Request::delete(&format!("{}/loans/{id}", API_BASE)))
-        .send()
-        .await?;
+    let url = format!("{}/loans/{id}", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::delete(&url)).build()).await?;
     parse_empty(resp).await
 }
 
@@ -400,6 +492,18 @@ pub async fn search_books(q: &str, offset: i32, limit: i32) -> ApiResult<Vec<Boo
     parse_envelope(resp).await
 }
 
+pub async fn list_users(offset: i32, limit: i32) -> ApiResult<Vec<User>> {
+    let url = format!("{}/users?offset={offset}&limit={limit}", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::get(&url)).build()).await?;
+    parse_envelope(resp).await
+}
+
+pub async fn delete_user(id: i64) -> ApiResult<()> {
+    let url = format!("{}/users/{id}", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::delete(&url)).build()).await?;
+    parse_empty(resp).await
+}
+
 pub async fn upload_cover(
     book_id: i64,
     filename: &str,
@@ -409,36 +513,36 @@ pub async fn upload_cover(
     use js_sys::Uint8Array;
     use wasm_bindgen::JsValue;
 
-    let array = Uint8Array::new_with_length(bytes.len() as u32);
-    array.copy_from(&bytes);
-    let parts = js_sys::Array::new();
-    parts.push(&JsValue::from(array));
-
-    let blob = if let Some(ct) = content_type {
-        let opts = web_sys::BlobPropertyBag::new();
-        opts.set_type(ct);
-        web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &opts)
-    } else {
-        web_sys::Blob::new_with_u8_array_sequence(&parts)
-    }
-    .map_err(|e| ApiError::Message(format!("Blob: {e:?}")))?;
-
-    let form = web_sys::FormData::new()
-        .map_err(|e| ApiError::Message(format!("FormData: {e:?}")))?;
-    form.append_with_blob_and_filename("file", &blob, filename)
-        .map_err(|e| ApiError::Message(format!("append: {e:?}")))?;
-
     let url = format!("{}/books/{book_id}/cover", API_BASE);
-    let mut req = Request::post(&url);
-    if let Some(token) = load_access_token() {
-        if !token.is_empty() {
-            req = req.header("Authorization", &format!("Bearer {token}"));
+    let filename = filename.to_string();
+    let content_type = content_type.map(|s| s.to_string());
+
+    // pack 把 (bytes, filename, content_type) 重新打包成 FormData 并装进 Request,
+    // 使 401 重试时能完全重建 (FormData 是一次性对象, 不能跨请求复用).
+    let pack = move || -> Result<gloo_net::http::Request, gloo_net::Error> {
+        let array = Uint8Array::new_with_length(bytes.len() as u32);
+        array.copy_from(&bytes);
+        let parts = js_sys::Array::new();
+        parts.push(&JsValue::from(array));
+
+        let blob = if let Some(ct) = &content_type {
+            let opts = web_sys::BlobPropertyBag::new();
+            opts.set_type(ct);
+            web_sys::Blob::new_with_u8_array_sequence_and_options(&parts, &opts)
+        } else {
+            web_sys::Blob::new_with_u8_array_sequence(&parts)
         }
-    }
-    let resp = req
-        .body(form)
-        .map_err(|e| ApiError::Network(e.to_string()))?
-        .send()
-        .await?;
+        .map_err(|e| gloo_net::Error::GlooError(format!("Blob: {e:?}")))?;
+
+        let form = web_sys::FormData::new()
+            .map_err(|e| gloo_net::Error::GlooError(format!("FormData: {e:?}")))?;
+        form
+            .append_with_blob_and_filename("file", &blob, &filename)
+            .map_err(|e| gloo_net::Error::GlooError(format!("append: {e:?}")))?;
+
+        with_auth(Request::post(&url)).body(form)
+    };
+
+    let resp = send_guarded(pack).await?;
     parse_envelope(resp).await
 }
