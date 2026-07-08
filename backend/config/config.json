@@ -27,6 +27,13 @@
             "config": {}
         },
         {
+            "name": "libsys::UserService",
+            "dependencies": [
+                "libsys::InfrastructurePlugin"
+            ],
+            "config": {}
+        },
+        {
             "name": "libsys::BookService",
             "dependencies": [
                 "libsys::InfrastructurePlugin"

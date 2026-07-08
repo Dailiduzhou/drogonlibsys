@@ -13,6 +13,10 @@ struct TokenPair {
   std::string jti; // JWT ID, 用于黑名单
   int64_t accessExpiresAt{0};
   int64_t refreshExpiresAt{0};
+  // 用户上下文 (同步下发, 便于前端做 UI 门禁; 真伪仍以 token 为准)
+  int64_t userId{0};
+  std::string username;
+  std::string role;
 };
 
 // JWT 载荷

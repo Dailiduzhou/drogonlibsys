@@ -1,5 +1,6 @@
 #include "libsys/utils/PgClient.h"
 
+#include <cstdint>
 #include <drogon/drogon.h>
 #include <drogon/orm/DbClient.h>
 
@@ -90,6 +91,74 @@ bool PgClient::createUser(const std::string &username,
     return true;
   } catch (...) {
     return false;
+  }
+}
+
+std::optional<User> PgClient::findUserById(int64_t id) {
+  auto f = g_db->execSqlAsyncFuture(
+      "SELECT id, username, password, role, "
+      "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
+      "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
+      "FROM users WHERE id=$1",
+      id);
+  auto r = f.get();
+  if (r.empty())
+    return std::nullopt;
+  const auto &row = r[0];
+  User u;
+  u.id = row["id"].as<int64_t>();
+  u.username = row["username"].as<std::string>();
+  u.password = row["password"].as<std::string>();
+  u.role = row["role"].as<std::string>();
+  u.createdAt = row["created_at"].as<std::string>();
+  u.updatedAt = row["updated_at"].as<std::string>();
+  return u;
+}
+
+std::vector<User> PgClient::listUsers(int offset, int limit) {
+  offset = normalizedOffset(offset);
+  limit = normalizedLimit(limit);
+  auto f = g_db->execSqlAsyncFuture(
+      "SELECT id, username, password, role, "
+      "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
+      "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
+      "FROM users ORDER BY id ASC LIMIT $1 OFFSET $2",
+      limit, offset);
+  auto r = f.get();
+  std::vector<User> out;
+  out.reserve(r.size());
+  for (const auto &row : r) {
+    User u;
+    u.id = row["id"].as<int64_t>();
+    u.username = row["username"].as<std::string>();
+    u.password = row["password"].as<std::string>();
+    u.role = row["role"].as<std::string>();
+    u.createdAt = row["created_at"].as<std::string>();
+    u.updatedAt = row["updated_at"].as<std::string>();
+    out.push_back(std::move(u));
+  }
+  return out;
+}
+
+bool PgClient::deleteUser(int64_t id) {
+  try {
+    auto f = g_db->execSqlAsyncFuture("DELETE FROM users WHERE id=$1", id);
+    return f.get().affectedRows() > 0;
+  } catch (...) {
+    return false;
+  }
+}
+
+int64_t PgClient::countAdmins() {
+  try {
+    auto f = g_db->execSqlAsyncFuture(
+        "SELECT count(*) AS cnt FROM users WHERE role='admin'");
+    auto r = f.get();
+    if (r.empty())
+      return 0;
+    return r[0]["cnt"].as<int64_t>();
+  } catch (...) {
+    return 0;
   }
 }
 
@@ -212,6 +281,44 @@ std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
     out.push_back(rowToLoanRecord(row));
   }
   return out;
+}
+
+std::vector<LoanRecord>
+PgClient::listActiveLoanRecordsByUser(int64_t userId, int offset, int limit) {
+  offset = normalizedOffset(offset);
+  limit = normalizedLimit(limit);
+  auto f = g_db->execSqlAsyncFuture(
+      "SELECT id, book_id, user_id, status, "
+      "to_char(borrowed_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS borrowed_at, "
+      "CASE WHEN returned_at IS NULL THEN NULL ELSE "
+      "to_char(returned_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') END AS returned_at, "
+      "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
+      "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
+      "FROM loan_records WHERE user_id=$1 AND status='borrowed' "
+      "ORDER BY id DESC LIMIT $2 OFFSET $3",
+      userId, limit, offset);
+  auto r = f.get();
+  std::vector<LoanRecord> out;
+  out.reserve(r.size());
+  for (const auto &row : r) {
+    out.push_back(rowToLoanRecord(row));
+  }
+  return out;
+}
+
+std::optional<int64_t> PgClient::countActiveLoanRecordsByUser(int64_t userId) {
+  try {
+    auto f =
+        g_db->execSqlAsyncFuture("SELECT count(*) AS cnt FROM loan_records "
+                                 "WHERE user_id = $1 AND status = 'borrowed'",
+                                 userId);
+    auto r = f.get();
+    if (r.empty())
+      return 0;
+    return r[0]["cnt"].as<int64_t>();
+  } catch (...) {
+    return std::nullopt;
+  }
 }
 
 int64_t PgClient::createLoanRecord(const LoanRecord &record) {

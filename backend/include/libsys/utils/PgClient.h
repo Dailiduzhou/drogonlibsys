@@ -18,9 +18,14 @@ public:
 
   // ---- 用户 ----
   static std::optional<User> findUserByName(const std::string &username);
+  static std::optional<User> findUserById(int64_t id);
+  static std::vector<User> listUsers(int offset, int limit);
   static bool createUser(const std::string &username,
                          const std::string &passwordHash,
                          const std::string &role);
+  static bool deleteUser(int64_t id);
+  // 角色为 admin 的用户数 (用于防止删除最后一个管理员)
+  static int64_t countAdmins();
 
   // ---- 图书 CRUD ----
   static std::optional<Book> findBookById(int64_t id);
@@ -34,6 +39,10 @@ public:
   static std::vector<LoanRecord> listLoanRecords(int offset, int limit);
   static std::vector<LoanRecord> listLoanRecordsByUser(int64_t userId,
                                                        int offset, int limit);
+  static std::vector<LoanRecord>
+  listActiveLoanRecordsByUser(int64_t userId, int offset, int limit);
+  // 该用户未还书数量 (status='borrowed'). DB 异常返回 nullopt.
+  static std::optional<int64_t> countActiveLoanRecordsByUser(int64_t userId);
   static int64_t createLoanRecord(const LoanRecord &record);
   static bool updateLoanRecord(const LoanRecord &record);
   static bool deleteLoanRecord(int64_t id);

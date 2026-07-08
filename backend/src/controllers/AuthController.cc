@@ -43,6 +43,9 @@ void AuthController::registerUser(
   data["refreshToken"] = result.tokens->refreshToken;
   data["accessExpiresAt"] = (Json::Int64)result.tokens->accessExpiresAt;
   data["refreshExpiresAt"] = (Json::Int64)result.tokens->refreshExpiresAt;
+  data["userId"] = (Json::Int64)result.tokens->userId;
+  data["username"] = result.tokens->username;
+  data["role"] = result.tokens->role;
   cb(ApiResponse::ok(data));
 }
 
@@ -66,6 +69,9 @@ void AuthController::login(
   data["refreshToken"] = pair->refreshToken;
   data["accessExpiresAt"] = (Json::Int64)pair->accessExpiresAt;
   data["refreshExpiresAt"] = (Json::Int64)pair->refreshExpiresAt;
+  data["userId"] = (Json::Int64)pair->userId;
+  data["username"] = pair->username;
+  data["role"] = pair->role;
   cb(ApiResponse::ok(data));
 }
 
@@ -88,6 +94,9 @@ void AuthController::refresh(
   data["refreshToken"] = pair->refreshToken;
   data["accessExpiresAt"] = (Json::Int64)pair->accessExpiresAt;
   data["refreshExpiresAt"] = (Json::Int64)pair->refreshExpiresAt;
+  data["userId"] = (Json::Int64)pair->userId;
+  data["username"] = pair->username;
+  data["role"] = pair->role;
   cb(ApiResponse::ok(data));
 }
 

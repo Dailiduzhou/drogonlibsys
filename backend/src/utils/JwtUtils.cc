@@ -37,6 +37,9 @@ void JwtUtils::init(const std::string &secret, const std::string &issuer,
 TokenPair JwtUtils::issue(int64_t userId, const std::string &username,
                           const std::string &role) {
   TokenPair pair;
+  pair.userId = userId;
+  pair.username = username;
+  pair.role = role;
   pair.jti = genJti();
   auto now = std::chrono::system_clock::now();
 
