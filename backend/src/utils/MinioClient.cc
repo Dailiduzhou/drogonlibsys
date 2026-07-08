@@ -31,10 +31,8 @@ struct MinioConfig {
 };
 
 std::mutex g_mutex;
-Aws::SDKOptions g_sdkOptions;
 std::shared_ptr<Aws::S3::S3Client> g_client;
 MinioConfig g_config;
-bool g_sdkInitialized = false;
 bool g_clientInitialized = false;
 
 std::string trimSlashes(std::string value) {
@@ -45,13 +43,6 @@ std::string trimSlashes(std::string value) {
     value.pop_back();
   }
   return value;
-}
-
-void ensureSdkInitializedLocked() {
-  if (!g_sdkInitialized) {
-    Aws::InitAPI(g_sdkOptions);
-    g_sdkInitialized = true;
-  }
 }
 
 MinioConfig normalizeConfig(const std::string &endpoint,
@@ -136,7 +127,6 @@ void MinioClient::init(const std::string &endpoint,
                        const std::string &secretKey, const std::string &bucket,
                        const std::string &region, bool secure) {
   std::lock_guard<std::mutex> lock(g_mutex);
-  ensureSdkInitializedLocked();
   g_config =
       normalizeConfig(endpoint, accessKey, secretKey, bucket, region, secure);
   g_client = buildClient(g_config);
@@ -147,10 +137,6 @@ void MinioClient::shutdown() {
   std::lock_guard<std::mutex> lock(g_mutex);
   g_client.reset();
   g_clientInitialized = false;
-  if (g_sdkInitialized) {
-    Aws::ShutdownAPI(g_sdkOptions);
-    g_sdkInitialized = false;
-  }
 }
 
 std::string MinioClient::putCover(const std::string &objectName,
