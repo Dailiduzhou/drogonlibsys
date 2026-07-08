@@ -10,7 +10,8 @@ namespace libsys {
 struct TokenPair {
   std::string accessToken;
   std::string refreshToken;
-  std::string jti; // JWT ID, 用于黑名单
+  std::string accessJti;
+  std::string refreshJti;
   int64_t accessExpiresAt{0};
   int64_t refreshExpiresAt{0};
   // 用户上下文 (同步下发, 便于前端做 UI 门禁; 真伪仍以 token 为准)
@@ -25,6 +26,7 @@ struct JwtClaims {
   std::string username;
   std::string role;
   std::string jti;
+  std::string tokenType;
 };
 
 class JwtUtils {
@@ -37,7 +39,8 @@ public:
                          const std::string &role);
 
   // 校验并解析 token; 失败返回 false
-  static bool verify(const std::string &token, JwtClaims &out);
+  static bool verify(const std::string &token, JwtClaims &out,
+                     const std::string &expectedType = "");
 
   // 计算指定 token 的剩余有效期 (秒), 用于黑名单 TTL
   static int remainingTtl(const std::string &token);
