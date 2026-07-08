@@ -30,8 +30,6 @@ void InfrastructurePlugin::initAndStart(const Json::Value &config) {
   LOG_INFO << "InfrastructurePlugin initialized";
 }
 
-void InfrastructurePlugin::shutdown() {
-  MinioClient::destroy();
-}
+void InfrastructurePlugin::shutdown() { MinioClient::destroy(); }
 
 } // namespace libsys
