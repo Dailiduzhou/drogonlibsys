@@ -1,7 +1,35 @@
 .git
 .gitignore
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+*~
+*.swp
+*.swo
+
+# Local caches / indexes
+.cache
+.codegraph
 .xmake
+
+# Build outputs
 build
 logs
+
+# Tests
 tests
+
+# Logs
 *.log
+*.tmp
+
+# Docs
+*.md
+docs/
+openapi.yaml
+
+# Docker / compose
+Dockerfile
+docker-compose*.yml

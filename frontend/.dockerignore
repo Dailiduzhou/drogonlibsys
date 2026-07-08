@@ -1,5 +1,29 @@
 .git
 .gitignore
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+*~
+*.swp
+*.swo
+
+# Tooling caches / metadata
+.agents
 target
 dist
+*.dioxus
+
+# Logs
 *.log
+*.tmp
+
+# Docs / config
+*.md
+clippy.toml
+skills-lock.json
+
+# Docker
+Dockerfile
+docker-compose*.yml
