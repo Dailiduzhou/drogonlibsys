@@ -11,7 +11,8 @@
             "loglevel": "INFO"
         },
         "maxConnectionNum": 10240,
-        "maxConnectionssPerIP": 128
+        "maxConnectionssPerIP": 128,
+        "clientMaxBodySize": 10485760
     },
     "plugins": [
         {

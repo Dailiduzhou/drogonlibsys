@@ -93,11 +93,7 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        LIBSYS_COVER_BASE: ${LIBSYS_COVER_BASE:-http://localhost:${MINIO_API_PORT:-9000}/${LIBSYS_MINIO_BUCKET:-libsys-covers}}
+    image: dailiduzhou/drogonlibsys-frontend:1.3
     container_name: libsys-frontend
     depends_on:
       - backend

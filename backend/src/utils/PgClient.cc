@@ -181,7 +181,7 @@ std::vector<Book> PgClient::listBooks(int offset, int limit) {
       "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
       "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
       "FROM books ORDER BY id DESC LIMIT $1 OFFSET $2",
-      limit, offset);
+      (int64_t)limit, (int64_t)offset);
   auto r = f.get();
   std::vector<Book> out;
   out.reserve(r.size());
@@ -194,7 +194,7 @@ int64_t PgClient::createBook(const Book &b) {
   auto f = g_db->execSqlAsyncFuture(
       "INSERT INTO books (title, author, description, cover_key, stock) "
       "VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      b.title, b.author, b.description, b.coverKey, b.stock);
+      b.title, b.author, b.description, b.coverKey, (int64_t)b.stock);
   auto r = f.get();
   return r[0]["id"].as<int64_t>();
 }
@@ -204,7 +204,7 @@ bool PgClient::updateBook(const Book &b) {
     auto f = g_db->execSqlAsyncFuture(
         "UPDATE books SET title=$1, author=$2, description=$3, "
         "cover_key=$4, stock=$5 WHERE id=$6",
-        b.title, b.author, b.description, b.coverKey, b.stock, b.id);
+        b.title, b.author, b.description, b.coverKey, (int64_t)b.stock, b.id);
     return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
@@ -248,7 +248,7 @@ std::vector<LoanRecord> PgClient::listLoanRecords(int offset, int limit) {
       "to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS created_at, "
       "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
       "FROM loan_records ORDER BY id DESC LIMIT $1 OFFSET $2",
-      limit, offset);
+      (int64_t)limit, (int64_t)offset);
   auto r = f.get();
   std::vector<LoanRecord> out;
   out.reserve(r.size());
@@ -271,7 +271,7 @@ std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
       "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
       "FROM loan_records WHERE user_id=$1 "
       "ORDER BY id DESC LIMIT $2 OFFSET $3",
-      userId, limit, offset);
+      userId, (int64_t)limit, (int64_t)offset);
   auto r = f.get();
   std::vector<LoanRecord> out;
   out.reserve(r.size());
@@ -294,7 +294,7 @@ PgClient::listActiveLoanRecordsByUser(int64_t userId, int offset, int limit) {
       "to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS updated_at "
       "FROM loan_records WHERE user_id=$1 AND status='borrowed' "
       "ORDER BY id DESC LIMIT $2 OFFSET $3",
-      userId, limit, offset);
+      userId, (int64_t)limit, (int64_t)offset);
   auto r = f.get();
   std::vector<LoanRecord> out;
   out.reserve(r.size());

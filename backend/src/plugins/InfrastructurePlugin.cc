@@ -31,7 +31,7 @@ void InfrastructurePlugin::initAndStart(const Json::Value &config) {
 }
 
 void InfrastructurePlugin::shutdown() {
-  MinioClient::shutdown();
+  MinioClient::destroy();
 }
 
 } // namespace libsys

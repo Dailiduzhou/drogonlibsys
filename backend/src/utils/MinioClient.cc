@@ -1,17 +1,14 @@
 #include "libsys/utils/MinioClient.h"
 
-#include <aws/core/Aws.h>
-#include <aws/core/auth/AWSCredentials.h>
-#include <aws/core/auth/signer/AWSAuthV4Signer.h>
-#include <aws/core/client/ClientConfiguration.h>
-#include <aws/core/http/HttpTypes.h>
-#include <aws/core/utils/memory/stl/AWSStringStream.h>
-#include <aws/s3/S3Client.h>
-#include <aws/s3/model/DeleteObjectRequest.h>
-#include <aws/s3/model/PutObjectRequest.h>
+#include <miniocpp/args.h>
+#include <miniocpp/client.h>
+#include <miniocpp/providers.h>
+#include <miniocpp/request.h>
+#include <miniocpp/response.h>
 
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -31,9 +28,12 @@ struct MinioConfig {
 };
 
 std::mutex g_mutex;
-std::shared_ptr<Aws::S3::S3Client> g_client;
 MinioConfig g_config;
 bool g_clientInitialized = false;
+
+std::unique_ptr<minio::s3::BaseUrl> g_baseUrl;
+std::unique_ptr<minio::creds::StaticProvider> g_provider;
+std::unique_ptr<minio::s3::Client> g_client;
 
 std::string trimSlashes(std::string value) {
   while (!value.empty() && value.front() == '/') {
@@ -80,44 +80,12 @@ MinioConfig normalizeConfig(const std::string &endpoint,
   return config;
 }
 
-std::shared_ptr<Aws::S3::S3Client> buildClient(const MinioConfig &config) {
-  Aws::Client::ClientConfiguration clientConfig;
-  clientConfig.region = config.region.c_str();
-  clientConfig.scheme =
-      config.secure ? Aws::Http::Scheme::HTTPS : Aws::Http::Scheme::HTTP;
-  clientConfig.endpointOverride = config.endpoint.c_str();
-  clientConfig.connectTimeoutMs = 10000;
-  clientConfig.requestTimeoutMs = 30000;
-  clientConfig.verifySSL = config.secure;
-
-  Aws::Auth::AWSCredentials credentials(config.accessKey.c_str(),
-                                        config.secretKey.c_str());
-
-  return std::make_shared<Aws::S3::S3Client>(
-      credentials, clientConfig,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::RequestDependent,
-      false);
-}
-
-struct ClientState {
-  std::shared_ptr<Aws::S3::S3Client> client;
-  MinioConfig config;
-};
-
-ClientState currentState() {
-  std::lock_guard<std::mutex> lock(g_mutex);
-  if (!g_clientInitialized || !g_client) {
-    throw std::runtime_error("MinioClient not initialized");
-  }
-  return {g_client, g_config};
-}
-
-std::runtime_error
-s3Error(const std::string &action,
-        const Aws::Client::AWSError<Aws::S3::S3Errors> &error) {
-  return std::runtime_error("MinIO " + action +
-                            " failed: " + error.GetExceptionName() + ": " +
-                            error.GetMessage());
+void buildClient(const MinioConfig &config) {
+  g_baseUrl = std::make_unique<minio::s3::BaseUrl>(
+      config.endpoint, config.secure, config.region);
+  g_provider = std::make_unique<minio::creds::StaticProvider>(
+      config.accessKey, config.secretKey);
+  g_client = std::make_unique<minio::s3::Client>(*g_baseUrl, g_provider.get());
 }
 
 } // namespace
@@ -129,15 +97,19 @@ void MinioClient::init(const std::string &endpoint,
   std::lock_guard<std::mutex> lock(g_mutex);
   g_config =
       normalizeConfig(endpoint, accessKey, secretKey, bucket, region, secure);
-  g_client = buildClient(g_config);
+  buildClient(g_config);
   g_clientInitialized = true;
 }
 
 void MinioClient::shutdown() {
   std::lock_guard<std::mutex> lock(g_mutex);
   g_client.reset();
+  g_provider.reset();
+  g_baseUrl.reset();
   g_clientInitialized = false;
 }
+
+void MinioClient::destroy() { shutdown(); }
 
 std::string MinioClient::putCover(const std::string &objectName,
                                   const std::string &contentType,
@@ -146,24 +118,23 @@ std::string MinioClient::putCover(const std::string &objectName,
     throw std::runtime_error("MinIO object name must not be empty");
   }
 
-  const auto state = currentState();
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!g_clientInitialized || !g_client) {
+    throw std::runtime_error("MinioClient not initialized");
+  }
+
   const auto mimeType =
       contentType.empty() ? "application/octet-stream" : contentType;
 
-  Aws::S3::Model::PutObjectRequest request;
-  request.SetBucket(state.config.bucket.c_str());
-  request.SetKey(objectName.c_str());
-  request.SetContentType(mimeType.c_str());
-  request.SetContentLength(static_cast<long long>(data.size()));
+  std::istringstream stream(data);
+  minio::s3::PutObjectArgs args(stream, static_cast<long>(data.size()), 0);
+  args.bucket = g_config.bucket;
+  args.object = objectName;
+  args.content_type = mimeType;
 
-  auto body = Aws::MakeShared<Aws::StringStream>("MinioClient::putCoverBody");
-  body->write(data.data(), static_cast<std::streamsize>(data.size()));
-  body->seekg(0, std::ios_base::beg);
-  request.SetBody(body);
-
-  auto outcome = state.client->PutObject(request);
-  if (!outcome.IsSuccess()) {
-    throw s3Error("PUT", outcome.GetError());
+  auto resp = g_client->PutObject(args);
+  if (!resp) {
+    throw std::runtime_error("MinIO PUT failed: " + resp.Error().String());
   }
   return objectName;
 }
@@ -173,14 +144,23 @@ std::string MinioClient::getUrl(const std::string &objectKey) {
     throw std::runtime_error("MinIO object key must not be empty");
   }
 
-  const auto state = currentState();
-  const auto url = state.client->GeneratePresignedUrl(
-      state.config.bucket.c_str(), objectKey.c_str(),
-      Aws::Http::HttpMethod::HTTP_GET, kPresignExpireSeconds);
-  if (url.empty()) {
-    throw std::runtime_error("MinIO GET URL generation failed");
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!g_clientInitialized || !g_client) {
+    throw std::runtime_error("MinioClient not initialized");
   }
-  return {url.c_str()};
+
+  minio::s3::GetPresignedObjectUrlArgs args;
+  args.bucket = g_config.bucket;
+  args.object = objectKey;
+  args.method = minio::http::Method::kGet;
+  args.expiry_seconds = kPresignExpireSeconds;
+
+  auto resp = g_client->GetPresignedObjectUrl(args);
+  if (!resp) {
+    throw std::runtime_error("MinIO GET URL generation failed: " +
+                             resp.Error().String());
+  }
+  return resp.url;
 }
 
 bool MinioClient::remove(const std::string &objectKey) {
@@ -188,15 +168,18 @@ bool MinioClient::remove(const std::string &objectKey) {
     return false;
   }
 
-  const auto state = currentState();
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!g_clientInitialized || !g_client) {
+    throw std::runtime_error("MinioClient not initialized");
+  }
 
-  Aws::S3::Model::DeleteObjectRequest request;
-  request.SetBucket(state.config.bucket.c_str());
-  request.SetKey(objectKey.c_str());
+  minio::s3::RemoveObjectArgs args;
+  args.bucket = g_config.bucket;
+  args.object = objectKey;
 
-  auto outcome = state.client->DeleteObject(request);
-  if (!outcome.IsSuccess()) {
-    throw s3Error("DELETE", outcome.GetError());
+  auto resp = g_client->RemoveObject(args);
+  if (!resp) {
+    throw std::runtime_error("MinIO DELETE failed: " + resp.Error().String());
   }
   return true;
 }
