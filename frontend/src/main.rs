@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 
 mod api;
 mod auth;
+mod components;
 mod layout;
 mod pages;
 mod routes;
@@ -18,7 +19,8 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    auth::provide_auth();
+    let signal = use_signal(|| auth::snapshot());
+    use_context_provider(|| signal);
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }

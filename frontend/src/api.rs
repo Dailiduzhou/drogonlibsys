@@ -10,6 +10,21 @@ pub const API_BASE: &str = match option_env!("LIBSYS_API_BASE") {
     None => "/api",
 };
 
+pub const COVER_BASE: &str = match option_env!("LIBSYS_COVER_BASE") {
+    Some(base) => base,
+    None => "",
+};
+
+/// 由 MinIO object key 拼出可直接 <img src> 的公网 URL.
+/// key 为空时返回空串, 调用方据此走占位 UI.
+pub fn cover_url(cover_key: &str) -> String {
+    if cover_key.is_empty() {
+        return String::new();
+    }
+    let base = COVER_BASE.trim_end_matches('/');
+    format!("{base}/{cover_key}")
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApiResponse<T> {
     #[serde(default)]

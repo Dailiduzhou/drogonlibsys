@@ -1,5 +1,8 @@
 FROM rust:1.89-bookworm AS builder
 
+ARG LIBSYS_COVER_BASE=""
+ENV LIBSYS_COVER_BASE=${LIBSYS_COVER_BASE}
+
 RUN rustup target add wasm32-unknown-unknown \
   && cargo install dioxus-cli --locked
 

@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::api;
+use crate::components::CoverPlaceholder;
 use crate::routes::Route;
 
 #[component]
@@ -52,26 +53,45 @@ pub fn Search() -> Element {
                     Some(Ok(list)) => rsx! {
                         ul { class: "space-y-3",
                             for book in list.clone() {
-                                {
-                                    let id = book.id;
-                                    let title = book.title.clone();
-                                    let author = book.author.clone();
-                                    rsx! {
-                                        li {
-                                            Link {
-                                                to: Route::BookDetail { id },
-                                                class: "block p-4 rounded-lg bg-slate-800 hover:bg-slate-700",
-                                                div { class: "text-white font-medium", "{title}" }
-                                                div { class: "text-slate-400 text-sm", "作者：{author}" }
-                                            }
-                                        }
-                                    }
-                                }
+                                SearchResultRow { book: book }
                             }
                         }
                     },
                     Some(Err(e)) => rsx! { div { class: "text-red-400", "搜索失败：{e}" } },
                     None => rsx! { div { class: "text-slate-400", "搜索中..." } },
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn SearchResultRow(book: api::Book) -> Element {
+    let id = book.id;
+    let cover_src = api::cover_url(&book.cover_key);
+    let has_cover = !cover_src.is_empty();
+    let mut img_err = use_signal(|| false);
+
+    rsx! {
+        li {
+            Link {
+                to: Route::BookDetail { id },
+                class: "flex gap-4 p-3 rounded-lg bg-slate-800 hover:bg-slate-700",
+                div { class: "w-20 h-28 bg-slate-700 rounded overflow-hidden flex items-center justify-center shrink-0",
+                    if has_cover && !img_err() {
+                        img {
+                            src: "{cover_src}",
+                            class: "w-full h-full object-cover",
+                            loading: "lazy",
+                            onerror: move |_| img_err.set(true),
+                        }
+                    } else {
+                        CoverPlaceholder {}
+                    }
+                }
+                div { class: "flex-1 min-w-0 flex flex-col justify-center",
+                    div { class: "text-white font-medium truncate", "{book.title}" }
+                    div { class: "text-slate-400 text-sm", "作者：{book.author}" }
                 }
             }
         }

@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::auth;
+use crate::components::CoverPlaceholder;
 use crate::routes::Route;
 
 #[component]
@@ -10,6 +11,7 @@ pub fn BookDetail(id: i64) -> Element {
     let mut action_msg = use_signal(|| Option::<String>::None);
     let mut action_err = use_signal(|| Option::<String>::None);
     let mut reload_tick = use_signal(|| 0_u32);
+    let mut img_err = use_signal(|| false);
 
     let book = use_resource(move || {
         let _ = reload_tick();
@@ -23,6 +25,24 @@ pub fn BookDetail(id: i64) -> Element {
             match &*book.read_unchecked() {
                 Some(Ok(b)) => rsx! {
                     div { class: "mt-4 rounded-lg bg-slate-800 p-6",
+                        {
+                            let cover_src = api::cover_url(&b.cover_key);
+                            let has_cover = !cover_src.is_empty();
+                            rsx! {
+                                div { class: "w-full h-64 bg-slate-700 rounded mb-4 overflow-hidden flex items-center justify-center",
+                                    if has_cover && !img_err() {
+                                        img {
+                                            src: "{cover_src}",
+                                            class: "w-full h-full object-contain",
+                                            loading: "lazy",
+                                            onerror: move |_| img_err.set(true),
+                                        }
+                                    } else {
+                                        CoverPlaceholder {}
+                                    }
+                                }
+                            }
+                        }
                         h1 { class: "text-2xl font-bold text-white mb-2", "{b.title}" }
                         p { class: "text-slate-300 mb-1", "作者：{b.author}" }
                         p { class: "text-slate-400 mb-1", "库存：{b.stock}" }

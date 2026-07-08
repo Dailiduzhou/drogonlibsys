@@ -113,9 +113,3 @@ pub fn snapshot() -> AuthState {
 pub fn use_auth() -> Signal<AuthState> {
     use_context::<Signal<AuthState>>()
 }
-
-pub fn provide_auth() -> Signal<AuthState> {
-    let signal = use_signal(|| snapshot());
-    use_context_provider(|| signal);
-    signal
-}

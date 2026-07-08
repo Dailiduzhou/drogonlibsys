@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 
 use crate::api;
 use crate::auth;
+use crate::components::CoverPlaceholder;
 use crate::routes::Route;
 
 #[component]
@@ -54,10 +55,26 @@ pub fn Books() -> Element {
 #[component]
 fn BookCard(book: api::Book) -> Element {
     let id = book.id;
+    let cover_src = api::cover_url(&book.cover_key);
+    let has_cover = !cover_src.is_empty();
+    let mut img_err = use_signal(|| false);
+
     rsx! {
         Link {
             to: Route::BookDetail { id },
             class: "block p-4 rounded-lg bg-slate-800 hover:bg-slate-700 transition",
+            div { class: "w-full h-40 bg-slate-700 rounded mb-3 overflow-hidden flex items-center justify-center",
+                if has_cover && !img_err() {
+                    img {
+                        src: "{cover_src}",
+                        class: "w-full h-full object-cover",
+                        loading: "lazy",
+                        onerror: move |_| img_err.set(true),
+                    }
+                } else {
+                    CoverPlaceholder {}
+                }
+            }
             h2 { class: "text-lg font-semibold text-white mb-1", "{book.title}" }
             p { class: "text-sm text-slate-300 mb-2", "作者：{book.author}" }
             p { class: "text-sm text-slate-400", "库存：{book.stock}" }
