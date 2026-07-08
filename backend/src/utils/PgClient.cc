@@ -81,15 +81,11 @@ std::optional<User> PgClient::findUserByName(const std::string &username) {
 bool PgClient::createUser(const std::string &username,
                           const std::string &passwordHash,
                           const std::string &role) {
-  try {
-    auto f = g_db->execSqlAsyncFuture(
-        "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
-        username, passwordHash, role);
-    f.get();
-    return true;
-  } catch (...) {
-    return false;
-  }
+  auto f = g_db->execSqlAsyncFuture(
+      "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
+      username, passwordHash, role);
+  f.get();
+  return true;
 }
 
 std::optional<User> PgClient::findUserById(int64_t id) {
@@ -194,7 +190,7 @@ int64_t PgClient::createBook(const Book &b) {
   auto f = g_db->execSqlAsyncFuture(
       "INSERT INTO books (title, author, description, cover_key, stock) "
       "VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      b.title, b.author, b.description, b.coverKey, (int64_t)b.stock);
+      b.title, b.author, b.description, b.coverKey, (int32_t)b.stock);
   auto r = f.get();
   return r[0]["id"].as<int64_t>();
 }
@@ -204,7 +200,7 @@ bool PgClient::updateBook(const Book &b) {
     auto f = g_db->execSqlAsyncFuture(
         "UPDATE books SET title=$1, author=$2, description=$3, "
         "cover_key=$4, stock=$5 WHERE id=$6",
-        b.title, b.author, b.description, b.coverKey, (int64_t)b.stock, b.id);
+        b.title, b.author, b.description, b.coverKey, (int32_t)b.stock, b.id);
     return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
