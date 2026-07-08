@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   uuid-dev \
   libyaml-cpp-dev \
+  python3-dev \
   ninja-build \
   pkg-config \
   zlib1g-dev \
@@ -66,8 +67,9 @@ RUN --mount=type=cache,target=/root/.xmake/cache \
   && . ~/.xmake/profile \
   && if [ -n "$XMAKE_PKG_MIRROR" ]; then xmake g --pkg_mirror="$XMAKE_PKG_MIRROR" -y; fi \
   && xmake f -m release -y \
-  && xmake build drogonlibsys
+  && xmake build drogonlibsys \
+  && xmake install -o /app/deploy drogonlibsys
 
 EXPOSE 8080
 
-CMD ["./build/bin/drogonlibsys"]
+CMD ["sh", "-c", "LD_LIBRARY_PATH=/app/deploy/lib /app/deploy/bin/drogonlibsys"]

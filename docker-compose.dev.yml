@@ -56,7 +56,8 @@ services:
     entrypoint: >
       /bin/sh -c
       "mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
-       mc mb -p local/${LIBSYS_MINIO_BUCKET:-libsys-covers} || true"
+       mc mb -p local/${LIBSYS_MINIO_BUCKET:-libsys-covers} || true &&
+       mc anonymous set download local/${LIBSYS_MINIO_BUCKET:-libsys-covers}"
     restart: "no"
 
   backend:
@@ -95,6 +96,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        LIBSYS_COVER_BASE: ${LIBSYS_COVER_BASE:-http://localhost:${MINIO_API_PORT:-9000}/${LIBSYS_MINIO_BUCKET:-libsys-covers}}
     container_name: libsys-frontend
     depends_on:
       - backend
