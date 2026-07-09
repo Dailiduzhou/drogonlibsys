@@ -52,6 +52,10 @@ public:
   static BorrowBookResult borrowBook(int64_t bookId, int64_t userId);
   static ReturnBookResult returnBook(int64_t bookId, int64_t userId);
 
+  // ---- 库存调整 ----
+  // delta > 0 加库存, delta < 0 扣库存. 库存不足返回 false.
+  static bool adjustStock(int64_t bookId, int64_t delta);
+
   // ---- 全文检索 ----
   static std::vector<Book> search(const std::string &query, int64_t offset,
                                   int64_t limit);
