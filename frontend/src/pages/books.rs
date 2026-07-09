@@ -55,7 +55,7 @@ pub fn Books() -> Element {
 #[component]
 fn BookCard(book: api::Book) -> Element {
     let id = book.id;
-    let cover_src = api::cover_url(&book.cover_key);
+    let cover_src = api::book_cover_url(&book);
     let has_cover = !cover_src.is_empty();
     let mut img_err = use_signal(|| false);
 

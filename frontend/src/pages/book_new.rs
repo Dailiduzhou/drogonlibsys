@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
+use gloo_storage::{LocalStorage, Storage};
 
 use crate::api::{self, BookCreate};
 use crate::routes::Route;
+
+const BOOK_CREATE_FLASH_KEY: &str = "libsys.book_create_flash";
 
 #[derive(Default, Clone)]
 struct SelectedFile {
@@ -41,11 +44,21 @@ pub fn BookNew() -> Element {
                 Ok(res) => {
                     let book_id = res.id;
                     if let Some(file) = file_opt {
-                        match api::upload_cover(book_id, &file.name, file.content_type.as_deref(), file.bytes).await {
+                        match api::upload_cover(
+                            book_id,
+                            &file.name,
+                            file.content_type.as_deref(),
+                            file.bytes,
+                        )
+                        .await
+                        {
                             Ok(_) => {}
                             Err(e) => {
-                                error.set(Some(format!("图书已创建，但封面上传失败：{e}")));
-                                loading.set(false);
+                                let _ = LocalStorage::set(
+                                    BOOK_CREATE_FLASH_KEY,
+                                    format!("图书已创建，请补传封面：{e}"),
+                                );
+                                nav.push(Route::BookEdit { id: book_id });
                                 return;
                             }
                         }

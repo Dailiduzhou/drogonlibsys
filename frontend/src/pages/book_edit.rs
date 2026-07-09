@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
+use gloo_storage::{LocalStorage, Storage};
 
 use crate::api::{self, BookUpdate};
 use crate::routes::Route;
+
+const BOOK_CREATE_FLASH_KEY: &str = "libsys.book_create_flash";
 
 #[component]
 pub fn BookEdit(id: i64) -> Element {
@@ -31,6 +34,13 @@ pub fn BookEdit(id: i64) -> Element {
         }
     });
 
+    use_effect(move || {
+        if let Ok::<String, _>(flash) = LocalStorage::get(BOOK_CREATE_FLASH_KEY) {
+            msg.set(Some(flash));
+            LocalStorage::delete(BOOK_CREATE_FLASH_KEY);
+        }
+    });
+
     let mut submit = move |_| {
         loading.set(true);
         error.set(None);
@@ -53,7 +63,9 @@ pub fn BookEdit(id: i64) -> Element {
 
     let mut upload_cover = move |ev: Event<FormData>| {
         let files = ev.files();
-        let Some(file) = files.into_iter().next() else { return };
+        let Some(file) = files.into_iter().next() else {
+            return;
+        };
 
         msg.set(None);
         error.set(None);

@@ -15,14 +15,23 @@ pub const COVER_BASE: &str = match option_env!("LIBSYS_COVER_BASE") {
     None => "",
 };
 
-/// 由 MinIO object key 拼出可直接 <img src> 的公网 URL.
-/// key 为空时返回空串, 调用方据此走占位 UI.
-pub fn cover_url(cover_key: &str) -> String {
+/// 兼容旧数据: 由 MinIO object key 拼出可直接 <img src> 的 URL.
+pub fn legacy_cover_url(cover_key: &str) -> String {
     if cover_key.is_empty() {
         return String::new();
     }
     let base = COVER_BASE.trim_end_matches('/');
+    if base.is_empty() {
+        return String::new();
+    }
     format!("{base}/{cover_key}")
+}
+
+pub fn book_cover_url(book: &Book) -> String {
+    if !book.cover_url.is_empty() {
+        return book.cover_url.clone();
+    }
+    legacy_cover_url(&book.cover_key)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -65,6 +74,8 @@ pub struct Book {
     pub description: String,
     #[serde(rename = "coverKey", default)]
     pub cover_key: String,
+    #[serde(rename = "coverUrl", default)]
+    pub cover_url: String,
     #[serde(default)]
     pub stock: i32,
     #[serde(rename = "createdAt", default)]
@@ -129,7 +140,11 @@ pub struct LoanCreate {
     pub status: String,
     #[serde(rename = "borrowedAt")]
     pub borrowed_at: String,
-    #[serde(rename = "returnedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "returnedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub returned_at: Option<String>,
 }
 
@@ -146,7 +161,11 @@ pub struct LoanUpdate {
     pub status: String,
     #[serde(rename = "borrowedAt")]
     pub borrowed_at: String,
-    #[serde(rename = "returnedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "returnedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub returned_at: Option<String>,
 }
 
@@ -406,8 +425,8 @@ pub async fn get_book(id: i64) -> ApiResult<Book> {
 }
 
 pub async fn create_book(input: BookCreate) -> ApiResult<IdOnly> {
-    let body = serde_json::to_string(&input)
-        .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+    let body =
+        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
     let url = format!("{}/books", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -420,8 +439,8 @@ pub async fn create_book(input: BookCreate) -> ApiResult<IdOnly> {
 }
 
 pub async fn update_book(id: i64, input: BookUpdate) -> ApiResult<()> {
-    let body = serde_json::to_string(&input)
-        .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+    let body =
+        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
     let url = format!("{}/books/{id}", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -458,8 +477,8 @@ pub async fn list_loans(offset: i32, limit: i32) -> ApiResult<Vec<LoanRecord>> {
 }
 
 pub async fn create_loan(input: LoanCreate) -> ApiResult<IdOnly> {
-    let body = serde_json::to_string(&input)
-        .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+    let body =
+        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
     let url = format!("{}/loans", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -478,8 +497,8 @@ pub async fn get_loan(id: i64) -> ApiResult<LoanRecord> {
 }
 
 pub async fn update_loan(id: i64, input: LoanUpdate) -> ApiResult<()> {
-    let body = serde_json::to_string(&input)
-        .map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+    let body =
+        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
     let url = format!("{}/loans/{id}", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -498,7 +517,9 @@ pub async fn delete_loan(id: i64) -> ApiResult<()> {
 }
 
 pub async fn search_books(q: &str, offset: i32, limit: i32) -> ApiResult<Vec<Book>> {
-    let encoded = js_sys::encode_uri_component(q).as_string().unwrap_or_default();
+    let encoded = js_sys::encode_uri_component(q)
+        .as_string()
+        .unwrap_or_default();
     let url = format!(
         "{}/search?q={encoded}&offset={offset}&limit={limit}",
         API_BASE
@@ -557,8 +578,7 @@ pub async fn upload_cover(
 
         let form = web_sys::FormData::new()
             .map_err(|e| gloo_net::Error::GlooError(format!("FormData: {e:?}")))?;
-        form
-            .append_with_blob_and_filename("file", &blob, &filename)
+        form.append_with_blob_and_filename("file", &blob, &filename)
             .map_err(|e| gloo_net::Error::GlooError(format!("append: {e:?}")))?;
 
         with_auth(Request::post(&url)).body(form)
