@@ -513,6 +513,12 @@ pub async fn list_users(offset: i32, limit: i32) -> ApiResult<Vec<User>> {
     parse_envelope(resp).await
 }
 
+pub async fn get_user(id: i64) -> ApiResult<User> {
+    let url = format!("{}/users/{id}", API_BASE);
+    let resp = send_guarded(move || with_auth(Request::get(&url)).build()).await?;
+    parse_envelope(resp).await
+}
+
 pub async fn delete_user(id: i64) -> ApiResult<()> {
     let url = format!("{}/users/{id}", API_BASE);
     let resp = send_guarded(move || with_auth(Request::delete(&url)).build()).await?;

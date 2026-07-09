@@ -134,7 +134,8 @@ pub fn AdminUsers() -> Element {
                                     let n = list.len();
                                     rsx! { span { class: "text-xs text-slate-400", "共 {n} 条" } }
                                 }
-                                _ => rsx! { span { class: "text-xs text-slate-400", "加载中..." } },
+                                Some(Err(_)) => rsx! { span { class: "text-xs text-red-400", "加载失败" } },
+                                None => rsx! { span { class: "text-xs text-slate-400", "加载中..." } },
                             }}
                             button {
                                 class: "px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs",
@@ -146,7 +147,14 @@ pub fn AdminUsers() -> Element {
 
                     match &*users.read_unchecked() {
                         Some(Err(e)) => rsx! {
-                            div { class: "px-4 py-4 text-red-400 text-sm", "加载失败：{e}" }
+                            div { class: "px-4 py-4 flex items-center justify-between",
+                                span { class: "text-red-400 text-sm", "加载失败：{e}" }
+                                button {
+                                    class: "px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs text-white",
+                                    onclick: reload,
+                                    "重试"
+                                }
+                            }
                         },
                         None => rsx! {
                             div { class: "px-4 py-4 text-slate-400 text-sm", "加载中..." }
