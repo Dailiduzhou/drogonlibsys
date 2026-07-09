@@ -43,7 +43,7 @@
   * 针对高频的图书详情查询、热门搜索等接口实现 Singleflight 模式（请求合并）。
   * 当多个并发请求同时查询同一个未命中缓存的图书 Key 时，只允许一个请求打到 PostgreSQL 数据库，其余请求阻塞等待，获取结果后共享返回，有效防止**缓存击穿** (Cache Stampede)。
 * **Redis 缓存层**:
-  * 配合 Singleflight，将高频读取的图书元数据和搜索结果缓存在 Redis 中，减轻 PG 数据库压力。并添加过期时间抖动（expiration jitter)，防止缓存雪崩。
+  * 配合 Singleflight，将高频读取的图书元数据和搜索结果缓存在 Redis 中，减轻 PG 数据库压力。
 
 ### 2.5 工程化与构建 (Engineering)
 * **Xmake 配置与编译**:
