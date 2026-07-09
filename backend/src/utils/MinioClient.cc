@@ -83,8 +83,8 @@ MinioConfig normalizeConfig(const std::string &endpoint,
 void buildClient(const MinioConfig &config) {
   g_baseUrl = std::make_unique<minio::s3::BaseUrl>(
       config.endpoint, config.secure, config.region);
-  g_provider = std::make_unique<minio::creds::StaticProvider>(
-      config.accessKey, config.secretKey);
+  g_provider = std::make_unique<minio::creds::StaticProvider>(config.accessKey,
+                                                              config.secretKey);
   g_client = std::make_unique<minio::s3::Client>(*g_baseUrl, g_provider.get());
 }
 

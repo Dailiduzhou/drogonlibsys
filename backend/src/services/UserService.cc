@@ -21,8 +21,7 @@ bool UserService::deleteUser(int64_t id) { return PgClient::deleteUser(id); }
 
 int64_t UserService::countAdmins() { return PgClient::countAdmins(); }
 
-std::optional<int64_t>
-UserService::countActiveLoansByUser(int64_t userId) {
+std::optional<int64_t> UserService::countActiveLoansByUser(int64_t userId) {
   return PgClient::countActiveLoanRecordsByUser(userId);
 }
 

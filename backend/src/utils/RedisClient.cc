@@ -105,8 +105,8 @@ bool RedisClient::delByPrefix(const std::string &prefix) {
 
     auto *cursorReply = r->element[0];
     auto *keysReply = r->element[1];
-    if (!cursorReply || cursorReply->type != REDIS_REPLY_STRING ||
-        !keysReply || keysReply->type != REDIS_REPLY_ARRAY) {
+    if (!cursorReply || cursorReply->type != REDIS_REPLY_STRING || !keysReply ||
+        keysReply->type != REDIS_REPLY_ARRAY) {
       freeReplyObject(r);
       return false;
     }
