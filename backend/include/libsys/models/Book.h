@@ -12,7 +12,7 @@ struct Book {
   std::string author;
   std::string description;
   std::string coverKey; // MinIO Object Key
-  int stock{0};
+  int64_t stock{0};
   std::string createdAt;
   std::string updatedAt;
 };

@@ -18,12 +18,14 @@ std::optional<LoanRecord> LoanService::getLoanRecord(int64_t id) {
   return PgClient::findLoanRecordById(id);
 }
 
-std::vector<LoanRecord> LoanService::listLoanRecords(int offset, int limit) {
+std::vector<LoanRecord> LoanService::listLoanRecords(int64_t offset,
+                                                     int64_t limit) {
   return PgClient::listLoanRecords(offset, limit);
 }
 
 std::vector<LoanRecord>
-LoanService::listLoanRecordsByUser(int64_t userId, int offset, int limit) {
+LoanService::listLoanRecordsByUser(int64_t userId, int64_t offset,
+                                   int64_t limit) {
   return PgClient::listLoanRecordsByUser(userId, offset, limit);
 }
 

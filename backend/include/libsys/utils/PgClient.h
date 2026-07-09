@@ -19,7 +19,7 @@ public:
   // ---- 用户 ----
   static std::optional<User> findUserByName(const std::string &username);
   static std::optional<User> findUserById(int64_t id);
-  static std::vector<User> listUsers(int offset, int limit);
+  static std::vector<User> listUsers(int64_t offset, int64_t limit);
   static bool createUser(const std::string &username,
                          const std::string &passwordHash,
                          const std::string &role);
@@ -29,18 +29,19 @@ public:
 
   // ---- 图书 CRUD ----
   static std::optional<Book> findBookById(int64_t id);
-  static std::vector<Book> listBooks(int offset, int limit);
+  static std::vector<Book> listBooks(int64_t offset, int64_t limit);
   static int64_t createBook(const Book &b);
   static bool updateBook(const Book &b);
   static bool deleteBook(int64_t id);
 
   // ---- 出借记录 CRUD ----
   static std::optional<LoanRecord> findLoanRecordById(int64_t id);
-  static std::vector<LoanRecord> listLoanRecords(int offset, int limit);
+  static std::vector<LoanRecord> listLoanRecords(int64_t offset, int64_t limit);
   static std::vector<LoanRecord> listLoanRecordsByUser(int64_t userId,
-                                                       int offset, int limit);
+                                                       int64_t offset,
+                                                       int64_t limit);
   static std::vector<LoanRecord>
-  listActiveLoanRecordsByUser(int64_t userId, int offset, int limit);
+  listActiveLoanRecordsByUser(int64_t userId, int64_t offset, int64_t limit);
   // 该用户未还书数量 (status='borrowed'). DB 异常返回 nullopt.
   static std::optional<int64_t> countActiveLoanRecordsByUser(int64_t userId);
   static int64_t createLoanRecord(const LoanRecord &record);
@@ -52,8 +53,8 @@ public:
   static ReturnBookResult returnBook(int64_t bookId, int64_t userId);
 
   // ---- 全文检索 ----
-  static std::vector<Book> search(const std::string &query, int offset,
-                                  int limit);
+  static std::vector<Book> search(const std::string &query, int64_t offset,
+                                  int64_t limit);
 };
 
 } // namespace libsys

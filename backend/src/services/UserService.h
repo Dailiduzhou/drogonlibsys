@@ -17,7 +17,7 @@ public:
   void shutdown() override;
 
   std::optional<User> getUser(int64_t id);
-  std::vector<User> listUsers(int offset, int limit);
+  std::vector<User> listUsers(int64_t offset, int64_t limit);
   bool deleteUser(int64_t id);
 
   // 全表 admin 数量, 用于防止删除最后一个管理员

@@ -37,7 +37,7 @@ std::optional<Book> jsonToBook(const std::string &s) {
   b.author = root["author"].asString();
   b.description = root["description"].asString();
   b.coverKey = root["coverKey"].asString();
-  b.stock = root["stock"].asInt();
+  b.stock = root["stock"].asInt64();
   b.createdAt = root["createdAt"].asString();
   b.updatedAt = root["updatedAt"].asString();
   return b;
@@ -89,7 +89,7 @@ std::optional<Book> BookService::getBook(int64_t id) {
   return opt;
 }
 
-std::vector<Book> BookService::listBooks(int offset, int limit) {
+std::vector<Book> BookService::listBooks(int64_t offset, int64_t limit) {
   return PgClient::listBooks(offset, limit);
 }
 

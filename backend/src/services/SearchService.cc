@@ -10,7 +10,7 @@ namespace libsys {
 namespace {
 constexpr int kSearchCacheTtl = 60; // 搜索结果缓存 1 分钟
 
-std::string searchKey(const std::string &q, int offset, int limit) {
+std::string searchKey(const std::string &q, int64_t offset, int64_t limit) {
   return "search:" + q + ":" + std::to_string(offset) + ":" +
          std::to_string(limit);
 }
@@ -20,8 +20,8 @@ void SearchService::initAndStart(const Json::Value &config) { (void)config; }
 
 void SearchService::shutdown() {}
 
-std::vector<Book> SearchService::search(const std::string &query, int offset,
-                                        int limit) {
+std::vector<Book> SearchService::search(const std::string &query,
+                                        int64_t offset, int64_t limit) {
   std::string key = searchKey(query, offset, limit);
 
   // Singleflight 合并相同关键词的并发搜索请求, 防缓存击穿

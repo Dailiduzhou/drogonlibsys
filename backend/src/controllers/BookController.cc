@@ -4,6 +4,7 @@
 #include "services/BookService.h"
 #include "services/OssService.h"
 
+#include <cstdlib>
 #include <drogon/MultiPart.h>
 #include <exception>
 #include <json/json.h>
@@ -11,6 +12,15 @@
 namespace libsys {
 
 namespace {
+int64_t parseInt64Param(const drogon::HttpRequestPtr &req,
+                        const std::string &name) {
+  const auto value = req->getParameter(name);
+  if (value.empty()) {
+    return 0;
+  }
+  return std::strtoll(value.c_str(), nullptr, 10);
+}
+
 Json::Value bookJson(const Book &b) {
   Json::Value v;
   v["id"] = (Json::Int64)b.id;
@@ -28,8 +38,8 @@ Json::Value bookJson(const Book &b) {
 void BookController::list(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
-  int offset = std::atoi(req->getParameter("offset").c_str());
-  int limit = std::atoi(req->getParameter("limit").c_str());
+  int64_t offset = parseInt64Param(req, "offset");
+  int64_t limit = parseInt64Param(req, "limit");
   if (limit <= 0)
     limit = 20;
 
@@ -66,7 +76,7 @@ void BookController::create(
   b.author = json->get("author", "").asString();
   b.description = json->get("description", "").asString();
   b.coverKey = json->get("coverKey", "").asString();
-  b.stock = json->get("stock", 0).asInt();
+  b.stock = json->get("stock", 0).asInt64();
   if (b.title.empty() || b.author.empty()) {
     cb(ApiResponse::fail(400, "title and author required"));
     return;
@@ -92,7 +102,7 @@ void BookController::update(
   b.author = json->get("author", "").asString();
   b.description = json->get("description", "").asString();
   b.coverKey = json->get("coverKey", "").asString();
-  b.stock = json->get("stock", 0).asInt();
+  b.stock = json->get("stock", 0).asInt64();
   auto *svc = drogon::app().getPlugin<BookService>();
   if (!svc->updateBook(b)) {
     cb(ApiResponse::fail(500, "update failed"));

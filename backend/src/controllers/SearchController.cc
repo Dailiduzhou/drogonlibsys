@@ -2,11 +2,21 @@
 #include "libsys/models/ApiResponse.h"
 #include "services/SearchService.h"
 
+#include <cstdlib>
 #include <json/json.h>
 
 namespace libsys {
 
 namespace {
+int64_t parseInt64Param(const drogon::HttpRequestPtr &req,
+                        const std::string &name) {
+  const auto value = req->getParameter(name);
+  if (value.empty()) {
+    return 0;
+  }
+  return std::strtoll(value.c_str(), nullptr, 10);
+}
+
 Json::Value bookJson(const Book &b) {
   Json::Value v;
   v["id"] = (Json::Int64)b.id;
@@ -25,8 +35,8 @@ void SearchController::search(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
   std::string q = req->getParameter("q");
-  int offset = std::atoi(req->getParameter("offset").c_str());
-  int limit = std::atoi(req->getParameter("limit").c_str());
+  int64_t offset = parseInt64Param(req, "offset");
+  int64_t limit = parseInt64Param(req, "limit");
   if (limit <= 0)
     limit = 20;
   if (q.empty()) {

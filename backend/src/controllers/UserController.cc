@@ -2,11 +2,21 @@
 #include "libsys/models/ApiResponse.h"
 #include "services/UserService.h"
 
+#include <cstdlib>
 #include <json/json.h>
 
 namespace libsys {
 
 namespace {
+int64_t parseInt64Param(const drogon::HttpRequestPtr &req,
+                        const std::string &name) {
+  const auto value = req->getParameter(name);
+  if (value.empty()) {
+    return 0;
+  }
+  return std::strtoll(value.c_str(), nullptr, 10);
+}
+
 // 序列化用户 (不暴露 password 哈希). activeLoans 为该用户未还书数量.
 Json::Value userJson(const User &u, int64_t activeLoans = 0) {
   Json::Value v;
@@ -40,8 +50,8 @@ void UserController::list(
     return;
   }
 
-  int offset = std::atoi(req->getParameter("offset").c_str());
-  int limit = std::atoi(req->getParameter("limit").c_str());
+  int64_t offset = parseInt64Param(req, "offset");
+  int64_t limit = parseInt64Param(req, "limit");
   if (limit <= 0)
     limit = 20;
 

@@ -13,7 +13,7 @@ std::optional<User> UserService::getUser(int64_t id) {
   return PgClient::findUserById(id);
 }
 
-std::vector<User> UserService::listUsers(int offset, int limit) {
+std::vector<User> UserService::listUsers(int64_t offset, int64_t limit) {
   return PgClient::listUsers(offset, limit);
 }
 
