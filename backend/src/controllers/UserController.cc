@@ -1,4 +1,5 @@
 #include "controllers/UserController.h"
+#include "libsys/utils/HttpHelpers.h"
 #include "libsys/models/ApiResponse.h"
 #include "services/UserService.h"
 
@@ -7,7 +8,6 @@
 namespace libsys {
 
 namespace {
-// 序列化用户 (不暴露 password 哈希). activeLoans 为该用户未还书数量.
 Json::Value userJson(const User &u, int64_t activeLoans = 0) {
   Json::Value v;
   v["id"] = (Json::Int64)u.id;
@@ -17,18 +17,6 @@ Json::Value userJson(const User &u, int64_t activeLoans = 0) {
   v["createdAt"] = u.createdAt;
   v["updatedAt"] = u.updatedAt;
   return v;
-}
-
-int64_t currentUserId(const drogon::HttpRequestPtr &req) {
-  return req->getAttributes()->get<int64_t>("userId");
-}
-
-std::string currentRole(const drogon::HttpRequestPtr &req) {
-  return req->getAttributes()->get<std::string>("role");
-}
-
-bool isAdmin(const drogon::HttpRequestPtr &req) {
-  return currentRole(req) == "admin";
 }
 } // namespace
 
@@ -40,8 +28,8 @@ void UserController::list(
     return;
   }
 
-  int offset = std::atoi(req->getParameter("offset").c_str());
-  int limit = std::atoi(req->getParameter("limit").c_str());
+  int64_t offset = parseInt64Param(req, "offset");
+  int64_t limit = parseInt64Param(req, "limit");
   if (limit <= 0)
     limit = 20;
 
@@ -98,9 +86,6 @@ void UserController::remove(
     return;
   }
 
-  // 禁止删除仍有未还书 (status='borrowed') 的用户:
-  //   - 查询失败 (nullopt) -> fail-closed, 返回 500 阻止删除
-  //   - 数量 > 0          -> 409, 提示先归还/管理员手动改状态
   auto active = svc->countActiveLoansByUser(id);
   if (!active) {
     cb(ApiResponse::fail(500, "cannot verify active loans"));

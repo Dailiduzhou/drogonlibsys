@@ -14,7 +14,8 @@ public:
   void initAndStart(const Json::Value &config) override;
   void shutdown() override;
 
-  std::vector<Book> search(const std::string &query, int offset, int limit);
+  std::vector<Book> search(const std::string &query, int64_t offset,
+                           int64_t limit);
 };
 
 } // namespace libsys

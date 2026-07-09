@@ -17,7 +17,7 @@ public:
   // 查询图书详情 (Singleflight + Redis 缓存)
   std::optional<Book> getBook(int64_t id);
 
-  std::vector<Book> listBooks(int offset, int limit);
+  std::vector<Book> listBooks(int64_t offset, int64_t limit);
 
   int64_t createBook(const Book &b);
   bool updateBook(const Book &b);
@@ -25,10 +25,10 @@ public:
 
   // JSON 序列化 (供缓存与响应复用)
   static std::string bookKey(int64_t id);
+  static bool invalidateBookCaches(int64_t id);
 
 private:
   static bool invalidateSearchCaches();
-  static bool invalidateBookCaches(int64_t id);
 };
 
 } // namespace libsys

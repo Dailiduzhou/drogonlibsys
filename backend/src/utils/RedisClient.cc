@@ -90,26 +90,36 @@ bool RedisClient::del(const std::string &key) {
 }
 
 bool RedisClient::delByPrefix(const std::string &prefix) {
-  auto *r = static_cast<redisReply *>(
-      redisCommand(g_ctx, "KEYS %s*", prefix.c_str()));
-  if (r == nullptr) {
-    return false;
-  }
-
   std::vector<std::string> keys;
-  if (r->type == REDIS_REPLY_ARRAY) {
-    keys.reserve(r->elements);
-    for (size_t i = 0; i < r->elements; ++i) {
-      auto *item = r->element[i];
+  std::string cursor = "0";
+  do {
+    auto *r = static_cast<redisReply *>(redisCommand(
+        g_ctx, "SCAN %s MATCH %s* COUNT 100", cursor.c_str(), prefix.c_str()));
+    if (r == nullptr) {
+      return false;
+    }
+    if (r->type != REDIS_REPLY_ARRAY || r->elements != 2) {
+      freeReplyObject(r);
+      return false;
+    }
+
+    auto *cursorReply = r->element[0];
+    auto *keysReply = r->element[1];
+    if (!cursorReply || cursorReply->type != REDIS_REPLY_STRING || !keysReply ||
+        keysReply->type != REDIS_REPLY_ARRAY) {
+      freeReplyObject(r);
+      return false;
+    }
+
+    cursor.assign(cursorReply->str, cursorReply->len);
+    for (size_t i = 0; i < keysReply->elements; ++i) {
+      auto *item = keysReply->element[i];
       if (item && item->type == REDIS_REPLY_STRING) {
         keys.emplace_back(item->str, item->len);
       }
     }
-  } else if (r->type == REDIS_REPLY_ERROR) {
     freeReplyObject(r);
-    return false;
-  }
-  freeReplyObject(r);
+  } while (cursor != "0");
 
   bool ok = true;
   for (const auto &key : keys) {

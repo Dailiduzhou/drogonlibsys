@@ -9,11 +9,13 @@ namespace libsys {
 namespace {
 drogon::orm::DbClientPtr g_db;
 
-constexpr int kDefaultPageSize = 20;
+constexpr int64_t kDefaultPageSize = 20;
 
-int normalizedOffset(int offset) { return offset < 0 ? 0 : offset; }
+int64_t normalizedOffset(int64_t offset) { return offset < 0 ? 0 : offset; }
 
-int normalizedLimit(int limit) { return limit <= 0 ? kDefaultPageSize : limit; }
+int64_t normalizedLimit(int64_t limit) {
+  return limit <= 0 ? kDefaultPageSize : limit;
+}
 
 Book rowToBook(const drogon::orm::Row &row) {
   Book b;
@@ -24,7 +26,7 @@ Book rowToBook(const drogon::orm::Row &row) {
       row["description"].isNull() ? "" : row["description"].as<std::string>();
   b.coverKey =
       row["cover_key"].isNull() ? "" : row["cover_key"].as<std::string>();
-  b.stock = row["stock"].as<int>();
+  b.stock = row["stock"].as<int64_t>();
   b.createdAt = row["created_at"].as<std::string>();
   b.updatedAt = row["updated_at"].as<std::string>();
   return b;
@@ -81,15 +83,11 @@ std::optional<User> PgClient::findUserByName(const std::string &username) {
 bool PgClient::createUser(const std::string &username,
                           const std::string &passwordHash,
                           const std::string &role) {
-  try {
-    auto f = g_db->execSqlAsyncFuture(
-        "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
-        username, passwordHash, role);
-    f.get();
-    return true;
-  } catch (...) {
-    return false;
-  }
+  auto f = g_db->execSqlAsyncFuture(
+      "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
+      username, passwordHash, role);
+  f.get();
+  return true;
 }
 
 std::optional<User> PgClient::findUserById(int64_t id) {
@@ -113,7 +111,7 @@ std::optional<User> PgClient::findUserById(int64_t id) {
   return u;
 }
 
-std::vector<User> PgClient::listUsers(int offset, int limit) {
+std::vector<User> PgClient::listUsers(int64_t offset, int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -173,7 +171,7 @@ std::optional<Book> PgClient::findBookById(int64_t id) {
   return rowToBook(r[0]);
 }
 
-std::vector<Book> PgClient::listBooks(int offset, int limit) {
+std::vector<Book> PgClient::listBooks(int64_t offset, int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -194,7 +192,7 @@ int64_t PgClient::createBook(const Book &b) {
   auto f = g_db->execSqlAsyncFuture(
       "INSERT INTO books (title, author, description, cover_key, stock) "
       "VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      b.title, b.author, b.description, b.coverKey, b.stock);
+      b.title, b.author, b.description, b.coverKey, (int32_t)b.stock);
   auto r = f.get();
   return r[0]["id"].as<int64_t>();
 }
@@ -204,7 +202,7 @@ bool PgClient::updateBook(const Book &b) {
     auto f = g_db->execSqlAsyncFuture(
         "UPDATE books SET title=$1, author=$2, description=$3, "
         "cover_key=$4, stock=$5 WHERE id=$6",
-        b.title, b.author, b.description, b.coverKey, b.stock, b.id);
+        b.title, b.author, b.description, b.coverKey, (int32_t)b.stock, b.id);
     return f.get().affectedRows() > 0;
   } catch (...) {
     return false;
@@ -237,7 +235,8 @@ std::optional<LoanRecord> PgClient::findLoanRecordById(int64_t id) {
   return rowToLoanRecord(r[0]);
 }
 
-std::vector<LoanRecord> PgClient::listLoanRecords(int offset, int limit) {
+std::vector<LoanRecord> PgClient::listLoanRecords(int64_t offset,
+                                                  int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -259,7 +258,8 @@ std::vector<LoanRecord> PgClient::listLoanRecords(int offset, int limit) {
 }
 
 std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
-                                                        int offset, int limit) {
+                                                        int64_t offset,
+                                                        int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -282,7 +282,8 @@ std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
 }
 
 std::vector<LoanRecord>
-PgClient::listActiveLoanRecordsByUser(int64_t userId, int offset, int limit) {
+PgClient::listActiveLoanRecordsByUser(int64_t userId, int64_t offset,
+                                      int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -362,7 +363,7 @@ BorrowBookResult PgClient::borrowBook(int64_t bookId, int64_t userId) {
       return {BorrowBookStatus::BookNotFound, 0};
     }
 
-    if (bookResult[0]["stock"].as<int>() <= 0) {
+    if (bookResult[0]["stock"].as<int64_t>() <= 0) {
       return {BorrowBookStatus::OutOfStock, 0};
     }
 
@@ -438,9 +439,20 @@ ReturnBookResult PgClient::returnBook(int64_t bookId, int64_t userId) {
   }
 }
 
+bool PgClient::adjustStock(int64_t bookId, int64_t delta) {
+  try {
+    auto f = g_db->execSqlAsyncFuture(
+        "UPDATE books SET stock = stock + $1 WHERE id = $2 AND stock + $1 >= 0",
+        (int32_t)delta, bookId);
+    return f.get().affectedRows() > 0;
+  } catch (...) {
+    return false;
+  }
+}
+
 // 搜索: 基于 pg_trgm 索引命中 title/author/description, 按相似度排序
-std::vector<Book> PgClient::search(const std::string &query, int offset,
-                                   int limit) {
+std::vector<Book> PgClient::search(const std::string &query, int64_t offset,
+                                   int64_t limit) {
   if (query.empty()) {
     return {};
   }

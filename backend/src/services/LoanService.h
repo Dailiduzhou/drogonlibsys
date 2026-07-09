@@ -16,9 +16,9 @@ public:
   void shutdown() override;
 
   std::optional<LoanRecord> getLoanRecord(int64_t id);
-  std::vector<LoanRecord> listLoanRecords(int offset, int limit);
-  std::vector<LoanRecord> listLoanRecordsByUser(int64_t userId, int offset,
-                                                int limit);
+  std::vector<LoanRecord> listLoanRecords(int64_t offset, int64_t limit);
+  std::vector<LoanRecord> listLoanRecordsByUser(int64_t userId, int64_t offset,
+                                                int64_t limit);
   int64_t createLoanRecord(const LoanRecord &record);
   bool updateLoanRecord(const LoanRecord &record);
   bool deleteLoanRecord(int64_t id);
@@ -26,7 +26,6 @@ public:
   BorrowBookResult borrowBook(int64_t bookId, int64_t userId);
   ReturnBookResult returnBook(int64_t bookId, int64_t userId);
 
-private:
   static void invalidateBookStateCaches(int64_t bookId);
 };
 

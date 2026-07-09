@@ -26,7 +26,7 @@ pub fn BookDetail(id: i64) -> Element {
                 Some(Ok(b)) => rsx! {
                     div { class: "mt-4 rounded-lg bg-slate-800 p-6",
                         {
-                            let cover_src = api::cover_url(&b.cover_key);
+                            let cover_src = api::book_cover_url(b);
                             let has_cover = !cover_src.is_empty();
                             rsx! {
                                 div { class: "w-full h-64 bg-slate-700 rounded mb-4 overflow-hidden flex items-center justify-center",

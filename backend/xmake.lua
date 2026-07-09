@@ -21,10 +21,8 @@ end
 add_requires("drogon", { system = true })
 add_requires("jwt-cpp", "libxcrypt")
 add_requires("yaml-cpp", { system = true })
--- aws-sdk-cpp: 仅用 S3 的 PutObject/DeleteObject/GeneratePresignedUrl.
--- 用 shared 动态库, 避免静态库中 SelectObjectContent 等未使用方法
--- 引入 aws-cpp-sdk-eventstream / aws-c-event-stream 未链接符号的问题.
-add_requires("aws-sdk-cpp", { configs = { build_only = "s3", shared = true } })
+add_requires("inih", { system = false, configs = { ini_parser = true } })
+add_requires("minio-cpp")
 add_requires("hiredis", { system = true })
 
 -- 纯 C 子模块: 密码哈希 (bcrypt via libxcrypt), 与 Drogon 解耦
@@ -46,7 +44,7 @@ add_includedirs(
 	path.join(backend_dir, "csrc/include")
 )
 add_deps("libsys_c")
-add_packages("drogon", "jwt-cpp", "yaml-cpp", "aws-sdk-cpp", "hiredis", "libxcrypt")
+add_packages("drogon", "jwt-cpp", "yaml-cpp", "minio-cpp", "inih", "hiredis", "libxcrypt")
 add_syslinks("curl", "ssl", "crypto", "pq", "sqlite3")
 set_targetdir("build/bin")
 
@@ -62,7 +60,7 @@ add_includedirs(
 	path.join(backend_dir, "csrc/include")
 )
 add_deps("libsys_c")
-add_packages("drogon", "jwt-cpp", "yaml-cpp", "aws-sdk-cpp", "hiredis", "libxcrypt")
+add_packages("drogon", "jwt-cpp", "yaml-cpp", "minio-cpp", "inih", "hiredis", "libxcrypt")
 add_syslinks("curl", "ssl", "crypto", "pq", "sqlite3")
 set_targetdir("build/bin")
 set_default(false)

@@ -5,6 +5,8 @@
 #include <libsys_c/password_hash.h>
 
 #include <cstdlib>
+#include <exception>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -12,8 +14,7 @@ namespace libsys {
 
 namespace {
 constexpr size_t kMaxUsernameLength = 64;
-constexpr size_t kMaxPasswordLength =
-    512; /* 与 CRYPT_MAX_PASSPHRASE_SIZE 一致 */
+constexpr size_t kMaxPasswordLength = 512;
 
 bool isValidCredentialInput(const std::string &username,
                             const std::string &password) {
@@ -21,7 +22,6 @@ bool isValidCredentialInput(const std::string &username,
          !password.empty() && password.size() < kMaxPasswordLength;
 }
 
-/* RAII 包装 C 接口返回的 malloc 字符串 */
 struct CStringDeleter {
   void operator()(char *p) const { std::free(p); }
 };
@@ -38,6 +38,12 @@ std::optional<std::string> hashPassword(const std::string &plain) {
 bool verifyPassword(const std::string &hash, const std::string &plain) {
   return password_verify(hash.c_str(), plain.c_str()) == 1;
 }
+
+bool isUniqueViolation(const std::exception &e) {
+  const std::string what = e.what();
+  return what.find("23505") != std::string::npos ||
+         what.find("unique") != std::string::npos;
+}
 } // namespace
 
 void AuthService::initAndStart(const Json::Value &config) { (void)config; }
@@ -50,16 +56,17 @@ RegisterResult AuthService::registerUser(const std::string &username,
     return {RegisterStatus::InvalidInput, std::nullopt};
   }
 
-  if (PgClient::findUserByName(username)) {
-    return {RegisterStatus::UsernameTaken, std::nullopt};
-  }
-
   auto passwordHash = hashPassword(password);
   if (!passwordHash) {
     return {RegisterStatus::Failed, std::nullopt};
   }
 
-  if (!PgClient::createUser(username, *passwordHash, "user")) {
+  try {
+    PgClient::createUser(username, *passwordHash, "user");
+  } catch (const std::exception &e) {
+    if (isUniqueViolation(e)) {
+      return {RegisterStatus::UsernameTaken, std::nullopt};
+    }
     return {RegisterStatus::Failed, std::nullopt};
   }
 
@@ -87,14 +94,14 @@ std::optional<TokenPair> AuthService::login(const std::string &username,
 
 std::optional<TokenPair> AuthService::refresh(const std::string &refreshToken) {
   JwtClaims claims;
-  if (!JwtUtils::verify(refreshToken, claims))
+  if (!JwtUtils::verify(refreshToken, claims, "refresh"))
     return std::nullopt;
   if (RedisClient::isBlacklisted(claims.jti))
     return std::nullopt;
 
-  // 旧 refresh token 加入黑名单, 防止重放
   int ttl = JwtUtils::remainingTtl(refreshToken);
-  RedisClient::blacklistAdd(claims.jti, ttl);
+  if (!RedisClient::blacklistAdd(claims.jti, ttl))
+    return std::nullopt;
 
   return JwtUtils::issue(claims.userId, claims.username, claims.role);
 }

@@ -37,7 +37,7 @@ std::optional<Book> jsonToBook(const std::string &s) {
   b.author = root["author"].asString();
   b.description = root["description"].asString();
   b.coverKey = root["coverKey"].asString();
-  b.stock = root["stock"].asInt();
+  b.stock = root["stock"].asInt64();
   b.createdAt = root["createdAt"].asString();
   b.updatedAt = root["updatedAt"].asString();
   return b;
@@ -89,14 +89,17 @@ std::optional<Book> BookService::getBook(int64_t id) {
   return opt;
 }
 
-std::vector<Book> BookService::listBooks(int offset, int limit) {
+std::vector<Book> BookService::listBooks(int64_t offset, int64_t limit) {
   return PgClient::listBooks(offset, limit);
 }
 
 int64_t BookService::createBook(const Book &b) {
   auto id = PgClient::createBook(b);
   if (id > 0) {
-    invalidateSearchCaches();
+    if (!invalidateSearchCaches()) {
+      LOG_WARN << "failed to invalidate search caches after creating book "
+               << id;
+    }
   }
   return id;
 }
@@ -104,7 +107,9 @@ int64_t BookService::createBook(const Book &b) {
 bool BookService::updateBook(const Book &b) {
   bool ok = PgClient::updateBook(b);
   if (ok) {
-    invalidateBookCaches(b.id);
+    if (!invalidateBookCaches(b.id)) {
+      LOG_WARN << "failed to invalidate caches after updating book " << b.id;
+    }
   }
   return ok;
 }
@@ -112,7 +117,9 @@ bool BookService::updateBook(const Book &b) {
 bool BookService::deleteBook(int64_t id) {
   bool ok = PgClient::deleteBook(id);
   if (ok) {
-    invalidateBookCaches(id);
+    if (!invalidateBookCaches(id)) {
+      LOG_WARN << "failed to invalidate caches after deleting book " << id;
+    }
   }
   return ok;
 }

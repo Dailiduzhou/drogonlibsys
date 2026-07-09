@@ -1,5 +1,5 @@
 #include "controllers/BookController.h"
-#include "filters/JwtAuthFilter.h"
+#include "libsys/utils/HttpHelpers.h"
 #include "libsys/models/ApiResponse.h"
 #include "services/BookService.h"
 #include "services/OssService.h"
@@ -11,25 +11,49 @@
 namespace libsys {
 
 namespace {
-Json::Value bookJson(const Book &b) {
-  Json::Value v;
-  v["id"] = (Json::Int64)b.id;
-  v["title"] = b.title;
-  v["author"] = b.author;
-  v["description"] = b.description;
-  v["coverKey"] = b.coverKey;
-  v["stock"] = b.stock;
-  v["createdAt"] = b.createdAt;
-  v["updatedAt"] = b.updatedAt;
-  return v;
+
+std::string fileMimeType(const drogon::HttpFile &file) {
+  switch (file.getContentType()) {
+  case drogon::CT_IMAGE_APNG:
+    return "image/apng";
+  case drogon::CT_IMAGE_AVIF:
+    return "image/avif";
+  case drogon::CT_IMAGE_BMP:
+    return "image/bmp";
+  case drogon::CT_IMAGE_GIF:
+    return "image/gif";
+  case drogon::CT_IMAGE_ICNS:
+    return "image/icns";
+  case drogon::CT_IMAGE_JPG:
+    return "image/jpeg";
+  case drogon::CT_IMAGE_JP2:
+    return "image/jp2";
+  case drogon::CT_IMAGE_PNG:
+    return "image/png";
+  case drogon::CT_IMAGE_SVG_XML:
+    return "image/svg+xml";
+  case drogon::CT_IMAGE_TIFF:
+    return "image/tiff";
+  case drogon::CT_IMAGE_WEBP:
+    return "image/webp";
+  case drogon::CT_IMAGE_X_MNG:
+    return "image/x-mng";
+  case drogon::CT_IMAGE_X_TGA:
+    return "image/x-tga";
+  case drogon::CT_IMAGE_XICON:
+    return "image/x-icon";
+  default:
+    return "application/octet-stream";
+  }
 }
+
 } // namespace
 
 void BookController::list(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
-  int offset = std::atoi(req->getParameter("offset").c_str());
-  int limit = std::atoi(req->getParameter("limit").c_str());
+  int64_t offset = parseInt64Param(req, "offset");
+  int64_t limit = parseInt64Param(req, "limit");
   if (limit <= 0)
     limit = 20;
 
@@ -44,6 +68,7 @@ void BookController::list(
 void BookController::get(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  (void)req;
   auto *svc = drogon::app().getPlugin<BookService>();
   auto book = svc->getBook(id);
   if (!book) {
@@ -56,6 +81,11 @@ void BookController::get(
 void BookController::create(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   auto json = req->getJsonObject();
   if (!json) {
     cb(ApiResponse::fail(400, "json body required"));
@@ -66,9 +96,13 @@ void BookController::create(
   b.author = json->get("author", "").asString();
   b.description = json->get("description", "").asString();
   b.coverKey = json->get("coverKey", "").asString();
-  b.stock = json->get("stock", 0).asInt();
+  b.stock = json->get("stock", 0).asInt64();
   if (b.title.empty() || b.author.empty()) {
     cb(ApiResponse::fail(400, "title and author required"));
+    return;
+  }
+  if (b.stock < 0) {
+    cb(ApiResponse::fail(400, "stock must not be negative"));
     return;
   }
   auto *svc = drogon::app().getPlugin<BookService>();
@@ -81,20 +115,42 @@ void BookController::create(
 void BookController::update(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   auto json = req->getJsonObject();
   if (!json) {
     cb(ApiResponse::fail(400, "json body required"));
     return;
   }
-  Book b;
-  b.id = id;
-  b.title = json->get("title", "").asString();
-  b.author = json->get("author", "").asString();
-  b.description = json->get("description", "").asString();
-  b.coverKey = json->get("coverKey", "").asString();
-  b.stock = json->get("stock", 0).asInt();
+
   auto *svc = drogon::app().getPlugin<BookService>();
-  if (!svc->updateBook(b)) {
+  auto existing = svc->getBook(id);
+  if (!existing) {
+    cb(ApiResponse::fail(404, "book not found"));
+    return;
+  }
+
+  if (json->isMember("title"))
+    existing->title = (*json)["title"].asString();
+  if (json->isMember("author"))
+    existing->author = (*json)["author"].asString();
+  if (json->isMember("description"))
+    existing->description = (*json)["description"].asString();
+  if (json->isMember("coverKey"))
+    existing->coverKey = (*json)["coverKey"].asString();
+  if (json->isMember("stock")) {
+    auto newStock = (*json)["stock"].asInt64();
+    if (newStock < 0) {
+      cb(ApiResponse::fail(400, "stock must not be negative"));
+      return;
+    }
+    existing->stock = newStock;
+  }
+
+  if (!svc->updateBook(*existing)) {
     cb(ApiResponse::fail(500, "update failed"));
     return;
   }
@@ -104,6 +160,11 @@ void BookController::update(
 void BookController::remove(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   auto *svc = drogon::app().getPlugin<BookService>();
   auto book = svc->getBook(id);
   if (!book) {
@@ -127,10 +188,14 @@ void BookController::remove(
   cb(ApiResponse::ok());
 }
 
-// 封面上传: multipart/form-data -> MinIO -> 更新 books.cover_key
 void BookController::uploadCover(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   drogon::MultiPartParser parser;
   if (parser.parse(req) != 0 || parser.getFiles().empty()) {
     cb(ApiResponse::fail(400, "no file uploaded"));
@@ -152,7 +217,7 @@ void BookController::uploadCover(
   try {
     auto *oss = drogon::app().getPlugin<OssService>();
     const auto content = file.fileContent();
-    key = oss->uploadCover(id, file.getFileName(), "application/octet-stream",
+    key = oss->uploadCover(id, file.getFileName(), fileMimeType(file),
                            std::string(content.data(), content.size()));
     coverUrl = oss->coverUrl(key);
   } catch (const std::exception &e) {
@@ -160,9 +225,18 @@ void BookController::uploadCover(
     return;
   }
 
-  // 回写数据库 cover_key
   book->coverKey = key;
-  svc->updateBook(*book);
+  if (!svc->updateBook(*book)) {
+    try {
+      auto *oss = drogon::app().getPlugin<OssService>();
+      oss->deleteCover(key);
+    } catch (const std::exception &e) {
+      LOG_WARN << "failed to rollback uploaded cover for book " << id << ": "
+               << e.what();
+    }
+    cb(ApiResponse::fail(500, "cover metadata update failed"));
+    return;
+  }
 
   if (!oldCoverKey.empty() && oldCoverKey != key) {
     try {

@@ -8,6 +8,7 @@
 * **对象存储 (OSS)**: MinIO (图书封面等静态资源存储)
 * **鉴权机制**: JWT (JSON Web Token) 双 Token 机制 (Access Token + Refresh Token)
 * **并发控制**: Singleflight (防缓存击穿机制)
+* **Git版本控制**: 进行版本控制，使用Pull Request添加新功能
 
 ---
 
@@ -32,10 +33,10 @@
 ### 2.3 全文搜索模块 (Full-Text Search)
 * **倒排索引构建**:
   * 利用 PostgreSQL 的全文检索能力 (Full Text Search)。
-  * 针对图书的 `description` (描述)、`title` (标题)、`author` (作者) 等字段构建 `tsvector`。
+  * 针对图书的 `description` (描述)、`title` (标题)、`author` (作者) 等字段 使用pg_trgm进行全文搜索
   * 在数据库层面建立 GIN (Generalized Inverted Index) 倒排索引，加速文本检索。
 * **搜索 API**:
-  * 支持分词匹配与权重排序，客户端传入关键词，后端使用 `tsquery` 进行高效检索。
+  * 支持三元组匹配与相似度排序，客户端传入关键词，后端使用 `pg_trgm` 进行高效检索。
 
 ### 2.4 高并发与性能优化 (Performance)
 * **Singleflight 机制**:

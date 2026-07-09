@@ -20,7 +20,7 @@ void JwtAuthFilter::doFilter(const drogon::HttpRequestPtr &req,
 
   std::string token = auth.substr(sizeof(prefix) - 1);
   JwtClaims claims;
-  if (!JwtUtils::verify(token, claims)) {
+  if (!JwtUtils::verify(token, claims, "access")) {
     fcb(ApiResponse::fail(401, "invalid or expired token"));
     return;
   }

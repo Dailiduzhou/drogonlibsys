@@ -29,11 +29,13 @@ struct PostgresConfig {
 
 struct MinioConfig {
   std::string endpoint;
+  std::string publicEndpoint;
   std::string accessKey;
   std::string secretKey;
   std::string bucket;
   std::string region{"us-east-1"};
   bool secure{false};
+  bool publicSecure{false};
 };
 
 struct AppConfig {
