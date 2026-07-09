@@ -1,9 +1,11 @@
 #pragma once
 
 #include "libsys/models/Book.h"
+#include "services/OssService.h"
 
 #include <cstdlib>
 #include <drogon/HttpRequest.h>
+#include <drogon/drogon.h>
 #include <json/json.h>
 
 namespace libsys {
@@ -36,6 +38,18 @@ inline Json::Value bookJson(const Book &b) {
   v["author"] = b.author;
   v["description"] = b.description;
   v["coverKey"] = b.coverKey;
+  if (b.coverKey.empty()) {
+    v["coverUrl"] = "";
+  } else {
+    try {
+      auto *oss = drogon::app().getPlugin<OssService>();
+      v["coverUrl"] = oss->coverUrl(b.coverKey);
+    } catch (const std::exception &e) {
+      LOG_WARN << "failed to resolve cover URL for key '" << b.coverKey
+               << "': " << e.what();
+      v["coverUrl"] = "";
+    }
+  }
   v["stock"] = b.stock;
   v["createdAt"] = b.createdAt;
   v["updatedAt"] = b.updatedAt;

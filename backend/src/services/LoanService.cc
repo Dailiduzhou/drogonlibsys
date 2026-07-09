@@ -6,9 +6,7 @@
 
 namespace libsys {
 
-namespace {
 bool invalidateSearchCaches() { return RedisClient::delByPrefix("search:"); }
-} // namespace
 
 void LoanService::initAndStart(const Json::Value &config) { (void)config; }
 
@@ -23,9 +21,9 @@ std::vector<LoanRecord> LoanService::listLoanRecords(int64_t offset,
   return PgClient::listLoanRecords(offset, limit);
 }
 
-std::vector<LoanRecord>
-LoanService::listLoanRecordsByUser(int64_t userId, int64_t offset,
-                                   int64_t limit) {
+std::vector<LoanRecord> LoanService::listLoanRecordsByUser(int64_t userId,
+                                                           int64_t offset,
+                                                           int64_t limit) {
   return PgClient::listLoanRecordsByUser(userId, offset, limit);
 }
 

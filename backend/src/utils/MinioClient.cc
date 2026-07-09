@@ -32,8 +32,10 @@ MinioConfig g_config;
 bool g_clientInitialized = false;
 
 std::unique_ptr<minio::s3::BaseUrl> g_baseUrl;
+std::unique_ptr<minio::s3::BaseUrl> g_publicBaseUrl;
 std::unique_ptr<minio::creds::StaticProvider> g_provider;
 std::unique_ptr<minio::s3::Client> g_client;
+std::unique_ptr<minio::s3::Client> g_publicClient;
 
 std::string trimSlashes(std::string value) {
   while (!value.empty() && value.front() == '/') {
@@ -88,23 +90,36 @@ void buildClient(const MinioConfig &config) {
   g_client = std::make_unique<minio::s3::Client>(*g_baseUrl, g_provider.get());
 }
 
+void buildPublicClient(const MinioConfig &config) {
+  g_publicBaseUrl = std::make_unique<minio::s3::BaseUrl>(
+      config.endpoint, config.secure, config.region);
+  g_publicClient =
+      std::make_unique<minio::s3::Client>(*g_publicBaseUrl, g_provider.get());
+}
+
 } // namespace
 
 void MinioClient::init(const std::string &endpoint,
                        const std::string &accessKey,
                        const std::string &secretKey, const std::string &bucket,
-                       const std::string &region, bool secure) {
+                       const std::string &region, bool secure,
+                       const std::string &publicEndpoint, bool publicSecure) {
   std::lock_guard<std::mutex> lock(g_mutex);
   g_config =
       normalizeConfig(endpoint, accessKey, secretKey, bucket, region, secure);
   buildClient(g_config);
+  auto publicConfig = normalizeConfig(publicEndpoint, accessKey, secretKey,
+                                      bucket, region, publicSecure);
+  buildPublicClient(publicConfig);
   g_clientInitialized = true;
 }
 
 void MinioClient::shutdown() {
   std::lock_guard<std::mutex> lock(g_mutex);
+  g_publicClient.reset();
   g_client.reset();
   g_provider.reset();
+  g_publicBaseUrl.reset();
   g_baseUrl.reset();
   g_clientInitialized = false;
 }
@@ -145,7 +160,7 @@ std::string MinioClient::getUrl(const std::string &objectKey) {
   }
 
   std::lock_guard<std::mutex> lock(g_mutex);
-  if (!g_clientInitialized || !g_client) {
+  if (!g_clientInitialized || !g_publicClient) {
     throw std::runtime_error("MinioClient not initialized");
   }
 
@@ -155,7 +170,7 @@ std::string MinioClient::getUrl(const std::string &objectKey) {
   args.method = minio::http::Method::kGet;
   args.expiry_seconds = kPresignExpireSeconds;
 
-  auto resp = g_client->GetPresignedObjectUrl(args);
+  auto resp = g_publicClient->GetPresignedObjectUrl(args);
   if (!resp) {
     throw std::runtime_error("MinIO GET URL generation failed: " +
                              resp.Error().String());

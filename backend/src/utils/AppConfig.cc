@@ -192,6 +192,10 @@ void applyEnvOverrides(AppConfig &config) {
   if (const char *value = readEnv("LIBSYS_MINIO_ENDPOINT"); value != nullptr) {
     config.minio.endpoint = value;
   }
+  if (const char *value = readEnv("LIBSYS_MINIO_PUBLIC_ENDPOINT");
+      value != nullptr) {
+    config.minio.publicEndpoint = value;
+  }
   if (const char *value = readEnv("LIBSYS_MINIO_ACCESS_KEY");
       value != nullptr) {
     config.minio.accessKey = value;
@@ -208,6 +212,8 @@ void applyEnvOverrides(AppConfig &config) {
   }
   config.minio.secure =
       parseBoolEnv("LIBSYS_MINIO_SECURE", config.minio.secure);
+  config.minio.publicSecure =
+      parseBoolEnv("LIBSYS_MINIO_PUBLIC_SECURE", config.minio.publicSecure);
 }
 
 void validateConfig(const AppConfig &config) {
@@ -215,6 +221,10 @@ void validateConfig(const AppConfig &config) {
     throw std::runtime_error(
         "custom_config.jwt.refresh_ttl_seconds must be greater than "
         "custom_config.jwt.access_ttl_seconds");
+  }
+  if (config.minio.publicEndpoint.empty()) {
+    throw std::runtime_error(
+        "custom_config.minio.publicEndpoint must not be empty");
   }
 }
 
@@ -293,6 +303,19 @@ AppConfig loadAppConfigFromCustomConfig(const Json::Value &root) {
 
   const auto &minio = requireObject(root, "", "minio");
   config.minio.endpoint = requireString(minio, "minio", "endpoint");
+  if (minio.isMember("publicEndpoint")) {
+    if (!minio["publicEndpoint"].isString()) {
+      throw std::runtime_error(
+          "custom_config.minio.publicEndpoint must be a string");
+    }
+    config.minio.publicEndpoint = minio["publicEndpoint"].asString();
+    if (config.minio.publicEndpoint.empty()) {
+      throw std::runtime_error(
+          "custom_config.minio.publicEndpoint must not be empty");
+    }
+  } else {
+    config.minio.publicEndpoint = config.minio.endpoint;
+  }
   config.minio.accessKey = requireString(minio, "minio", "accessKey");
   config.minio.secretKey = requireString(minio, "minio", "secretKey");
   config.minio.bucket = requireString(minio, "minio", "bucket");
@@ -307,6 +330,11 @@ AppConfig loadAppConfigFromCustomConfig(const Json::Value &root) {
     config.minio.region = region;
   }
   config.minio.secure = requireBool(minio, "minio", "secure");
+  if (minio.isMember("publicSecure")) {
+    config.minio.publicSecure = requireBool(minio, "minio", "publicSecure");
+  } else {
+    config.minio.publicSecure = config.minio.secure;
+  }
 
   applyEnvOverrides(config);
   validateConfig(config);

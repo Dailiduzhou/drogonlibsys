@@ -85,11 +85,13 @@
         },
         "minio": {
             "endpoint": "127.0.0.1:9000",
+            "publicEndpoint": "127.0.0.1:9000",
             "accessKey": "minioadmin",
             "secretKey": "minioadmin",
             "bucket": "libsys-covers",
             "region": "us-east-1",
-            "secure": false
+            "secure": false,
+            "publicSecure": false
         }
     }
 }

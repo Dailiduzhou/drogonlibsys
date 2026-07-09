@@ -26,7 +26,6 @@ public:
   BorrowBookResult borrowBook(int64_t bookId, int64_t userId);
   ReturnBookResult returnBook(int64_t bookId, int64_t userId);
 
-private:
   static void invalidateBookStateCaches(int64_t bookId);
 };
 

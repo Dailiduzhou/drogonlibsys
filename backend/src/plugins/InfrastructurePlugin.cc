@@ -25,7 +25,9 @@ void InfrastructurePlugin::initAndStart(const Json::Value &config) {
                  appConfig.postgres.password, appConfig.postgres.connNumber);
   MinioClient::init(appConfig.minio.endpoint, appConfig.minio.accessKey,
                     appConfig.minio.secretKey, appConfig.minio.bucket,
-                    appConfig.minio.region, appConfig.minio.secure);
+                    appConfig.minio.region, appConfig.minio.secure,
+                    appConfig.minio.publicEndpoint,
+                    appConfig.minio.publicSecure);
 
   LOG_INFO << "InfrastructurePlugin initialized";
 }

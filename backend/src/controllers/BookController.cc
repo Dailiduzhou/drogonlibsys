@@ -10,6 +10,45 @@
 
 namespace libsys {
 
+namespace {
+
+std::string fileMimeType(const drogon::HttpFile &file) {
+  switch (file.getContentType()) {
+  case drogon::CT_IMAGE_APNG:
+    return "image/apng";
+  case drogon::CT_IMAGE_AVIF:
+    return "image/avif";
+  case drogon::CT_IMAGE_BMP:
+    return "image/bmp";
+  case drogon::CT_IMAGE_GIF:
+    return "image/gif";
+  case drogon::CT_IMAGE_ICNS:
+    return "image/icns";
+  case drogon::CT_IMAGE_JPG:
+    return "image/jpeg";
+  case drogon::CT_IMAGE_JP2:
+    return "image/jp2";
+  case drogon::CT_IMAGE_PNG:
+    return "image/png";
+  case drogon::CT_IMAGE_SVG_XML:
+    return "image/svg+xml";
+  case drogon::CT_IMAGE_TIFF:
+    return "image/tiff";
+  case drogon::CT_IMAGE_WEBP:
+    return "image/webp";
+  case drogon::CT_IMAGE_X_MNG:
+    return "image/x-mng";
+  case drogon::CT_IMAGE_X_TGA:
+    return "image/x-tga";
+  case drogon::CT_IMAGE_XICON:
+    return "image/x-icon";
+  default:
+    return "application/octet-stream";
+  }
+}
+
+} // namespace
+
 void BookController::list(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
@@ -29,6 +68,7 @@ void BookController::list(
 void BookController::get(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  (void)req;
   auto *svc = drogon::app().getPlugin<BookService>();
   auto book = svc->getBook(id);
   if (!book) {
@@ -177,7 +217,7 @@ void BookController::uploadCover(
   try {
     auto *oss = drogon::app().getPlugin<OssService>();
     const auto content = file.fileContent();
-    key = oss->uploadCover(id, file.getFileName(), "application/octet-stream",
+    key = oss->uploadCover(id, file.getFileName(), fileMimeType(file),
                            std::string(content.data(), content.size()));
     coverUrl = oss->coverUrl(key);
   } catch (const std::exception &e) {

@@ -79,6 +79,9 @@ components:
         coverKey:
           type: string
           description: MinIO object key
+        coverUrl:
+          type: string
+          description: Browser-accessible cover URL, usually a presigned MinIO URL
         stock:
           type: integer
         createdAt:
@@ -195,6 +198,7 @@ components:
           type: string
         coverUrl:
           type: string
+          description: Browser-accessible cover URL for the newly uploaded cover
 
     User:
       type: object

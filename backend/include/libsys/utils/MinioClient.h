@@ -10,7 +10,8 @@ class MinioClient {
 public:
   static void init(const std::string &endpoint, const std::string &accessKey,
                    const std::string &secretKey, const std::string &bucket,
-                   const std::string &region, bool secure);
+                   const std::string &region, bool secure,
+                   const std::string &publicEndpoint, bool publicSecure);
   static void destroy();
   static void shutdown();
 
