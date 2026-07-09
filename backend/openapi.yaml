@@ -55,6 +55,14 @@ components:
         refreshExpiresAt:
           type: integer
           format: int64
+        userId:
+          type: integer
+          format: int64
+        username:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
 
     Book:
       type: object
@@ -151,6 +159,7 @@ components:
           format: int64
         status:
           type: string
+          enum: [borrowed, returned]
           default: borrowed
         borrowedAt:
           type: string
@@ -515,8 +524,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: Missing Authorization token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          description: Missing or invalid token
+          description: Invalid or expired token
           content:
             application/json:
               schema:
@@ -649,6 +664,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
+        "400":
+          description: JSON body required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Unauthorized
           content:
@@ -748,6 +769,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "500":
+          description: Cover upload or metadata update failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/books/{id}/borrow:
     post:
@@ -794,6 +821,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "500":
+          description: Borrow failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/books/{id}/return:
     post:
@@ -830,6 +863,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: Book or loan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Return failed
           content:
             application/json:
               schema:
@@ -915,6 +954,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Create failed
           content:
             application/json:
               schema:
@@ -1008,6 +1053,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "500":
+          description: Update failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       tags: [Loans]
       summary: Delete loan record (admin only)
@@ -1036,6 +1087,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Delete failed
           content:
             application/json:
               schema:
@@ -1083,3 +1140,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /api/openapi.yaml:
+    get:
+      tags: [System]
+      summary: Get OpenAPI specification
+      description: Returns the raw OpenAPI YAML file served from the working directory.
+      responses:
+        "200":
+          description: OpenAPI YAML
+          content:
+            application/x-yaml:
+              schema:
+                type: string
+        "404":
+          description: openapi.yaml file not found on server
