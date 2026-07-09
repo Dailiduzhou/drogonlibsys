@@ -34,7 +34,14 @@ pub fn Login() -> Element {
                     auth_state.set(AuthState::from_tokens(&pair));
                     nav.push(Route::Books {});
                 }
-                Err(e) => error.set(Some(e.to_string())),
+                Err(e) => {
+                    let msg = if e.code() == 409 {
+                        "用户名已存在，请更换后重试。".to_string()
+                    } else {
+                        e.to_string()
+                    };
+                    error.set(Some(msg));
+                }
             }
             loading.set(false);
         });

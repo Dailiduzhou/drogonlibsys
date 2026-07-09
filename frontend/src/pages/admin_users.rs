@@ -72,7 +72,14 @@ pub fn AdminUsers() -> Element {
                     )));
                     reload_tick += 1;
                 }
-                Err(e) => error.set(Some(e.to_string())),
+                Err(e) => {
+                    let msg = if e.code() == 409 {
+                        "用户名已存在，请更换后重试。".to_string()
+                    } else {
+                        e.to_string()
+                    };
+                    error.set(Some(msg));
+                }
             }
             loading.set(false);
         });
@@ -211,7 +218,14 @@ fn UserRow(user: api::User, reload_tick: Signal<u32>) -> Element {
                     action_msg.set(Some(format!("已删除用户 #{id}")));
                     reload_tick += 1;
                 }
-                Err(e) => action_err.set(Some(e.to_string())),
+                Err(e) => {
+                    let msg = if e.code() == 409 {
+                        "无法删除：该用户是唯一管理员或有未归还的借阅记录。".to_string()
+                    } else {
+                        e.to_string()
+                    };
+                    action_err.set(Some(msg));
+                }
             }
             busy.set(false);
         });

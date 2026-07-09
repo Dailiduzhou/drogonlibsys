@@ -46,7 +46,14 @@ pub fn LoanDetail(id: i64) -> Element {
         spawn(async move {
             match api::update_loan(id, payload).await {
                 Ok(_) => msg.set(Some("更新成功".into())),
-                Err(e) => error.set(Some(e.to_string())),
+                Err(e) => {
+                    let msg = if e.code() == 409 {
+                        "库存不足，无法将状态改回 borrowing。".to_string()
+                    } else {
+                        e.to_string()
+                    };
+                    error.set(Some(msg));
+                }
             }
         });
     };

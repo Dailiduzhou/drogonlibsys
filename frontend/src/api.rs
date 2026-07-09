@@ -202,14 +202,30 @@ pub struct IdOnly {
 #[derive(Debug, Clone)]
 pub enum ApiError {
     Network(String),
-    Message(String),
+    Message { code: i32, msg: String },
+}
+
+impl ApiError {
+    pub fn msg(msg: impl Into<String>) -> Self {
+        ApiError::Message {
+            code: 0,
+            msg: msg.into(),
+        }
+    }
+
+    pub fn code(&self) -> i32 {
+        match self {
+            ApiError::Network(_) => 0,
+            ApiError::Message { code, .. } => *code,
+        }
+    }
 }
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ApiError::Network(m) => write!(f, "network error: {m}"),
-            ApiError::Message(m) => write!(f, "{m}"),
+            ApiError::Message { msg, .. } => write!(f, "{msg}"),
         }
     }
 }
@@ -232,25 +248,35 @@ async fn parse_envelope<T: for<'de> Deserialize<'de>>(
         .map_err(|e| ApiError::Network(e.to_string()))?;
     if !(200..300).contains(&status) {
         if let Ok(env) = serde_json::from_str::<ApiResponse<serde_json::Value>>(&text) {
-            return Err(ApiError::Message(if env.msg.is_empty() {
-                format!("HTTP {status}")
-            } else {
-                env.msg
-            }));
+            let code = if env.code != 0 { env.code } else { status as i32 };
+            return Err(ApiError::Message {
+                code,
+                msg: if env.msg.is_empty() {
+                    format!("HTTP {status}")
+                } else {
+                    env.msg
+                },
+            });
         }
-        return Err(ApiError::Message(format!("HTTP {status}: {text}")));
+        return Err(ApiError::Message {
+            code: status as i32,
+            msg: format!("HTTP {status}: {text}"),
+        });
     }
     let env: ApiResponse<T> = serde_json::from_str(&text)
-        .map_err(|e| ApiError::Message(format!("parse: {e} / body={text}")))?;
+        .map_err(|e| ApiError::msg(format!("parse: {e} / body={text}")))?;
     if env.code != 0 {
-        return Err(ApiError::Message(if env.msg.is_empty() {
-            format!("code {}", env.code)
-        } else {
-            env.msg
-        }));
+        return Err(ApiError::Message {
+            code: env.code,
+            msg: if env.msg.is_empty() {
+                format!("code {}", env.code)
+            } else {
+                env.msg
+            },
+        });
     }
     env.data
-        .ok_or_else(|| ApiError::Message("empty response data".into()))
+        .ok_or_else(|| ApiError::msg("empty response data"))
 }
 
 async fn parse_empty(resp: gloo_net::http::Response) -> ApiResult<()> {
@@ -261,25 +287,35 @@ async fn parse_empty(resp: gloo_net::http::Response) -> ApiResult<()> {
         .map_err(|e| ApiError::Network(e.to_string()))?;
     if !(200..300).contains(&status) {
         if let Ok(env) = serde_json::from_str::<ApiResponse<serde_json::Value>>(&text) {
-            return Err(ApiError::Message(if env.msg.is_empty() {
-                format!("HTTP {status}")
-            } else {
-                env.msg
-            }));
+            let code = if env.code != 0 { env.code } else { status as i32 };
+            return Err(ApiError::Message {
+                code,
+                msg: if env.msg.is_empty() {
+                    format!("HTTP {status}")
+                } else {
+                    env.msg
+                },
+            });
         }
-        return Err(ApiError::Message(format!("HTTP {status}: {text}")));
+        return Err(ApiError::Message {
+            code: status as i32,
+            msg: format!("HTTP {status}: {text}"),
+        });
     }
     if text.is_empty() {
         return Ok(());
     }
     let env: ApiResponse<serde_json::Value> = serde_json::from_str(&text)
-        .map_err(|e| ApiError::Message(format!("parse: {e} / body={text}")))?;
+        .map_err(|e| ApiError::msg(format!("parse: {e} / body={text}")))?;
     if env.code != 0 {
-        return Err(ApiError::Message(if env.msg.is_empty() {
-            format!("code {}", env.code)
-        } else {
-            env.msg
-        }));
+        return Err(ApiError::Message {
+            code: env.code,
+            msg: if env.msg.is_empty() {
+                format!("code {}", env.code)
+            } else {
+                env.msg
+            },
+        });
     }
     Ok(())
 }
@@ -426,7 +462,7 @@ pub async fn get_book(id: i64) -> ApiResult<Book> {
 
 pub async fn create_book(input: BookCreate) -> ApiResult<IdOnly> {
     let body =
-        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+        serde_json::to_string(&input).map_err(|e| ApiError::msg(format!("encode: {e}")))?;
     let url = format!("{}/books", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -440,7 +476,7 @@ pub async fn create_book(input: BookCreate) -> ApiResult<IdOnly> {
 
 pub async fn update_book(id: i64, input: BookUpdate) -> ApiResult<()> {
     let body =
-        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+        serde_json::to_string(&input).map_err(|e| ApiError::msg(format!("encode: {e}")))?;
     let url = format!("{}/books/{id}", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -478,7 +514,7 @@ pub async fn list_loans(offset: i32, limit: i32) -> ApiResult<Vec<LoanRecord>> {
 
 pub async fn create_loan(input: LoanCreate) -> ApiResult<IdOnly> {
     let body =
-        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+        serde_json::to_string(&input).map_err(|e| ApiError::msg(format!("encode: {e}")))?;
     let url = format!("{}/loans", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {
@@ -498,7 +534,7 @@ pub async fn get_loan(id: i64) -> ApiResult<LoanRecord> {
 
 pub async fn update_loan(id: i64, input: LoanUpdate) -> ApiResult<()> {
     let body =
-        serde_json::to_string(&input).map_err(|e| ApiError::Message(format!("encode: {e}")))?;
+        serde_json::to_string(&input).map_err(|e| ApiError::msg(format!("encode: {e}")))?;
     let url = format!("{}/loans/{id}", API_BASE);
     let body = body.clone();
     let resp = send_guarded(move || {

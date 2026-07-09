@@ -66,7 +66,14 @@ pub fn BookDetail(id: i64) -> Element {
                                         spawn(async move {
                                             match api::borrow_book(id).await {
                                                 Ok(r) => action_msg.set(Some(format!("借出成功，借阅 id={}", r.id))),
-                                                Err(e) => action_err.set(Some(e.to_string())),
+                                                Err(e) => {
+                                                    let msg = if e.code() == 409 {
+                                                        "借阅失败：库存不足或您已借阅该书。".to_string()
+                                                    } else {
+                                                        e.to_string()
+                                                    };
+                                                    action_err.set(Some(msg));
+                                                }
                                             }
                                             reload_tick += 1;
                                         });
@@ -101,7 +108,14 @@ pub fn BookDetail(id: i64) -> Element {
                                         spawn(async move {
                                             match api::delete_book(id).await {
                                                 Ok(_) => { nav.push(Route::Books {}); }
-                                                Err(e) => action_err.set(Some(e.to_string())),
+                                                Err(e) => {
+                                                    let msg = if e.code() == 409 {
+                                                        "无法删除：该图书尚有未归还的借阅记录。".to_string()
+                                                    } else {
+                                                        e.to_string()
+                                                    };
+                                                    action_err.set(Some(msg));
+                                                }
                                             }
                                         });
                                     },

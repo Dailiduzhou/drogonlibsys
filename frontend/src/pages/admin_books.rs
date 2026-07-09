@@ -132,7 +132,14 @@ fn BookAdminRow(book: api::Book, reload_tick: Signal<u32>) -> Element {
                     action_msg.set(Some(format!("已删除图书 #{id}")));
                     reload_tick += 1;
                 }
-                Err(e) => action_err.set(Some(e.to_string())),
+                Err(e) => {
+                    let msg = if e.code() == 409 {
+                        "无法删除：该图书尚有未归还的借阅记录。".to_string()
+                    } else {
+                        e.to_string()
+                    };
+                    action_err.set(Some(msg));
+                }
             }
             busy.set(false);
         });

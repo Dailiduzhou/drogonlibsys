@@ -31,7 +31,14 @@ pub fn LoanNew() -> Element {
         spawn(async move {
             match api::create_loan(payload).await {
                 Ok(res) => { nav.push(Route::LoanDetail { id: res.id }); }
-                Err(e) => error.set(Some(e.to_string())),
+                Err(e) => {
+                    let msg = if e.code() == 409 {
+                        "图书库存不足或不存在，请检查后再试。".to_string()
+                    } else {
+                        e.to_string()
+                    };
+                    error.set(Some(msg));
+                }
             }
             loading.set(false);
         });
