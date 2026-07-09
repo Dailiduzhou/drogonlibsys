@@ -55,6 +55,10 @@ ReturnBookResult LoanService::returnBook(int64_t bookId, int64_t userId) {
   return result;
 }
 
+std::optional<int64_t> LoanService::countActiveLoansByBook(int64_t bookId) {
+  return PgClient::countActiveLoanRecordsByBookID(bookId);
+}
+
 void LoanService::invalidateBookStateCaches(int64_t bookId) {
   RedisClient::del(BookService::bookKey(bookId));
   invalidateSearchCaches();

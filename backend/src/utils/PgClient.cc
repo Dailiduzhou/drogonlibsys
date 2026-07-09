@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <drogon/drogon.h>
 #include <drogon/orm/DbClient.h>
+#include <optional>
 
 namespace libsys {
 
@@ -257,9 +258,8 @@ std::vector<LoanRecord> PgClient::listLoanRecords(int64_t offset,
   return out;
 }
 
-std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
-                                                        int64_t offset,
-                                                        int64_t limit) {
+std::vector<LoanRecord>
+PgClient::listLoanRecordsByUser(int64_t userId, int64_t offset, int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -281,9 +281,9 @@ std::vector<LoanRecord> PgClient::listLoanRecordsByUser(int64_t userId,
   return out;
 }
 
-std::vector<LoanRecord>
-PgClient::listActiveLoanRecordsByUser(int64_t userId, int64_t offset,
-                                      int64_t limit) {
+std::vector<LoanRecord> PgClient::listActiveLoanRecordsByUser(int64_t userId,
+                                                              int64_t offset,
+                                                              int64_t limit) {
   offset = normalizedOffset(offset);
   limit = normalizedLimit(limit);
   auto f = g_db->execSqlAsyncFuture(
@@ -311,6 +311,22 @@ std::optional<int64_t> PgClient::countActiveLoanRecordsByUser(int64_t userId) {
         g_db->execSqlAsyncFuture("SELECT count(*) AS cnt FROM loan_records "
                                  "WHERE user_id = $1 AND status = 'borrowed'",
                                  userId);
+    auto r = f.get();
+    if (r.empty())
+      return 0;
+    return r[0]["cnt"].as<int64_t>();
+  } catch (...) {
+    return std::nullopt;
+  }
+}
+
+std::optional<int64_t>
+PgClient::countActiveLoanRecordsByBookID(int64_t bookId) {
+  try {
+    auto f =
+        g_db->execSqlAsyncFuture("SELECT count(*) AS cnt FROM loan_records "
+                                 "WHERE id = $1 AND status = 'borrowed'",
+                                 bookId);
     auto r = f.get();
     if (r.empty())
       return 0;

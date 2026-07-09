@@ -2,6 +2,7 @@
 #include "libsys/utils/HttpHelpers.h"
 #include "libsys/models/ApiResponse.h"
 #include "services/BookService.h"
+#include "services/LoanService.h"
 #include "services/OssService.h"
 
 #include <drogon/MultiPart.h>
@@ -171,6 +172,20 @@ void BookController::remove(
     cb(ApiResponse::fail(404, "book not found"));
     return;
   }
+
+  auto *loanSvc = drogon::app().getPlugin<LoanService>();
+  auto active = loanSvc->countActiveLoansByBook(id);
+  if (!active) {
+    cb(ApiResponse::fail(500, "cannot verify active loans"));
+    return;
+  }
+  if (*active > 0) {
+    cb(ApiResponse::fail(409,
+                         "book has " + std::to_string(*active) +
+                             " unreturned loan(s); return them before deleting"));
+    return;
+  }
+
   if (!svc->deleteBook(id)) {
     cb(ApiResponse::fail(500, "delete failed"));
     return;

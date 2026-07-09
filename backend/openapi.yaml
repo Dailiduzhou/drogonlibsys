@@ -689,7 +689,9 @@ paths:
     delete:
       tags: [Books]
       summary: Delete book
-      description: Delete book and its cover from MinIO. Requires authentication.
+      description: >
+        Delete a book and its cover from MinIO. Requires authentication.
+        Books with unreturned (status='borrowed') loans cannot be deleted.
       security:
         - BearerAuth: []
       parameters:
@@ -712,8 +714,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Book has unreturned loans
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Cannot verify active loans or delete failed
           content:
             application/json:
               schema:

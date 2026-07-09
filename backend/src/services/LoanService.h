@@ -26,6 +26,9 @@ public:
   BorrowBookResult borrowBook(int64_t bookId, int64_t userId);
   ReturnBookResult returnBook(int64_t bookId, int64_t userId);
 
+  // 该书未归还的借阅记录数; DB 异常返回 nullopt (调用方应拒绝删除以 fail-closed).
+  std::optional<int64_t> countActiveLoansByBook(int64_t bookId);
+
   static void invalidateBookStateCaches(int64_t bookId);
 };
 

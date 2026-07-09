@@ -37,13 +37,13 @@ public:
   // ---- 出借记录 CRUD ----
   static std::optional<LoanRecord> findLoanRecordById(int64_t id);
   static std::vector<LoanRecord> listLoanRecords(int64_t offset, int64_t limit);
-  static std::vector<LoanRecord> listLoanRecordsByUser(int64_t userId,
-                                                       int64_t offset,
-                                                       int64_t limit);
+  static std::vector<LoanRecord>
+  listLoanRecordsByUser(int64_t userId, int64_t offset, int64_t limit);
   static std::vector<LoanRecord>
   listActiveLoanRecordsByUser(int64_t userId, int64_t offset, int64_t limit);
   // 该用户未还书数量 (status='borrowed'). DB 异常返回 nullopt.
   static std::optional<int64_t> countActiveLoanRecordsByUser(int64_t userId);
+  static std::optional<int64_t> countActiveLoanRecordsByBookID(int64_t bookId);
   static int64_t createLoanRecord(const LoanRecord &record);
   static bool updateLoanRecord(const LoanRecord &record);
   static bool deleteLoanRecord(int64_t id);
