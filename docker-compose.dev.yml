@@ -84,16 +84,20 @@ services:
       LIBSYS_REDIS_PORT: ${LIBSYS_REDIS_PORT:-6379}
       LIBSYS_REDIS_PASSWORD: ${LIBSYS_REDIS_PASSWORD:-}
       LIBSYS_MINIO_ENDPOINT: ${LIBSYS_MINIO_ENDPOINT:-minio:9000}
+      LIBSYS_MINIO_PUBLIC_ENDPOINT: ${LIBSYS_MINIO_PUBLIC_ENDPOINT:-localhost:9000}
       LIBSYS_MINIO_ACCESS_KEY: ${LIBSYS_MINIO_ACCESS_KEY:-minioadmin}
       LIBSYS_MINIO_SECRET_KEY: ${LIBSYS_MINIO_SECRET_KEY:-minioadmin}
       LIBSYS_MINIO_BUCKET: ${LIBSYS_MINIO_BUCKET:-libsys-covers}
       LIBSYS_MINIO_REGION: ${LIBSYS_MINIO_REGION:-us-east-1}
       LIBSYS_MINIO_SECURE: ${LIBSYS_MINIO_SECURE:-false}
+      LIBSYS_MINIO_PUBLIC_SECURE: ${LIBSYS_MINIO_PUBLIC_SECURE:-false}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
 
   frontend:
-    image: dailiduzhou/drogonlibsys-frontend:1.3
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: libsys-frontend
     depends_on:
       - backend
