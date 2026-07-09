@@ -1,23 +1,16 @@
 #include "controllers/LoanController.h"
 
+#include "libsys/utils/HttpHelpers.h"
+#include "libsys/utils/PgClient.h"
 #include "libsys/models/ApiResponse.h"
+#include "services/BookService.h"
 #include "services/LoanService.h"
 
-#include <cstdlib>
 #include <json/json.h>
 
 namespace libsys {
 
 namespace {
-int64_t parseInt64Param(const drogon::HttpRequestPtr &req,
-                        const std::string &name) {
-  const auto value = req->getParameter(name);
-  if (value.empty()) {
-    return 0;
-  }
-  return std::strtoll(value.c_str(), nullptr, 10);
-}
-
 Json::Value loanJson(const LoanRecord &record) {
   Json::Value v;
   v["id"] = (Json::Int64)record.id;
@@ -33,18 +26,6 @@ Json::Value loanJson(const LoanRecord &record) {
   v["createdAt"] = record.createdAt;
   v["updatedAt"] = record.updatedAt;
   return v;
-}
-
-int64_t currentUserId(const drogon::HttpRequestPtr &req) {
-  return req->getAttributes()->get<int64_t>("userId");
-}
-
-std::string currentRole(const drogon::HttpRequestPtr &req) {
-  return req->getAttributes()->get<std::string>("role");
-}
-
-bool isAdmin(const drogon::HttpRequestPtr &req) {
-  return currentRole(req) == "admin";
 }
 } // namespace
 
@@ -112,6 +93,14 @@ void LoanController::create(
     return;
   }
 
+  if (record.status == "borrowed") {
+    if (!PgClient::adjustStock(record.bookId, -1)) {
+      cb(ApiResponse::fail(409, "book out of stock or not found"));
+      return;
+    }
+    LoanService::invalidateBookStateCaches(record.bookId);
+  }
+
   auto *svc = drogon::app().getPlugin<LoanService>();
   const auto id = svc->createLoanRecord(record);
   Json::Value data;
@@ -133,6 +122,13 @@ void LoanController::update(
     return;
   }
 
+  auto *svc = drogon::app().getPlugin<LoanService>();
+  auto oldRecord = svc->getLoanRecord(id);
+  if (!oldRecord) {
+    cb(ApiResponse::fail(404, "loan record not found"));
+    return;
+  }
+
   LoanRecord record;
   record.id = id;
   record.bookId = json->get("bookId", 0).asInt64();
@@ -149,7 +145,27 @@ void LoanController::update(
     return;
   }
 
-  auto *svc = drogon::app().getPlugin<LoanService>();
+  if (oldRecord->status == "borrowed" && record.status == "returned") {
+    PgClient::adjustStock(oldRecord->bookId, 1);
+    LoanService::invalidateBookStateCaches(oldRecord->bookId);
+  } else if (oldRecord->status == "returned" && record.status == "borrowed") {
+    if (!PgClient::adjustStock(record.bookId, -1)) {
+      cb(ApiResponse::fail(409, "book out of stock"));
+      return;
+    }
+    LoanService::invalidateBookStateCaches(record.bookId);
+  } else if (oldRecord->bookId != record.bookId &&
+             oldRecord->status == "borrowed") {
+    PgClient::adjustStock(oldRecord->bookId, 1);
+    if (!PgClient::adjustStock(record.bookId, -1)) {
+      PgClient::adjustStock(oldRecord->bookId, -1);
+      cb(ApiResponse::fail(409, "new book out of stock"));
+      return;
+    }
+    LoanService::invalidateBookStateCaches(oldRecord->bookId);
+    LoanService::invalidateBookStateCaches(record.bookId);
+  }
+
   if (!svc->updateLoanRecord(record)) {
     cb(ApiResponse::fail(500, "update failed"));
     return;
@@ -166,6 +182,17 @@ void LoanController::remove(
   }
 
   auto *svc = drogon::app().getPlugin<LoanService>();
+  auto record = svc->getLoanRecord(id);
+  if (!record) {
+    cb(ApiResponse::fail(404, "loan record not found"));
+    return;
+  }
+
+  if (record->status == "borrowed") {
+    PgClient::adjustStock(record->bookId, 1);
+    LoanService::invalidateBookStateCaches(record->bookId);
+  }
+
   if (!svc->deleteLoanRecord(id)) {
     cb(ApiResponse::fail(500, "delete failed"));
     return;

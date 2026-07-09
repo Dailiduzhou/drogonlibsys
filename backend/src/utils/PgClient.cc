@@ -439,6 +439,17 @@ ReturnBookResult PgClient::returnBook(int64_t bookId, int64_t userId) {
   }
 }
 
+bool PgClient::adjustStock(int64_t bookId, int64_t delta) {
+  try {
+    auto f = g_db->execSqlAsyncFuture(
+        "UPDATE books SET stock = stock + $1 WHERE id = $2 AND stock + $1 >= 0",
+        (int32_t)delta, bookId);
+    return f.get().affectedRows() > 0;
+  } catch (...) {
+    return false;
+  }
+}
+
 // 搜索: 基于 pg_trgm 索引命中 title/author/description, 按相似度排序
 std::vector<Book> PgClient::search(const std::string &query, int64_t offset,
                                    int64_t limit) {

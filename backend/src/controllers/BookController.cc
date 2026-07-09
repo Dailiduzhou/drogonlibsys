@@ -1,39 +1,14 @@
 #include "controllers/BookController.h"
-#include "filters/JwtAuthFilter.h"
+#include "libsys/utils/HttpHelpers.h"
 #include "libsys/models/ApiResponse.h"
 #include "services/BookService.h"
 #include "services/OssService.h"
 
-#include <cstdlib>
 #include <drogon/MultiPart.h>
 #include <exception>
 #include <json/json.h>
 
 namespace libsys {
-
-namespace {
-int64_t parseInt64Param(const drogon::HttpRequestPtr &req,
-                        const std::string &name) {
-  const auto value = req->getParameter(name);
-  if (value.empty()) {
-    return 0;
-  }
-  return std::strtoll(value.c_str(), nullptr, 10);
-}
-
-Json::Value bookJson(const Book &b) {
-  Json::Value v;
-  v["id"] = (Json::Int64)b.id;
-  v["title"] = b.title;
-  v["author"] = b.author;
-  v["description"] = b.description;
-  v["coverKey"] = b.coverKey;
-  v["stock"] = b.stock;
-  v["createdAt"] = b.createdAt;
-  v["updatedAt"] = b.updatedAt;
-  return v;
-}
-} // namespace
 
 void BookController::list(
     const drogon::HttpRequestPtr &req,
@@ -66,6 +41,11 @@ void BookController::get(
 void BookController::create(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   auto json = req->getJsonObject();
   if (!json) {
     cb(ApiResponse::fail(400, "json body required"));
@@ -81,6 +61,10 @@ void BookController::create(
     cb(ApiResponse::fail(400, "title and author required"));
     return;
   }
+  if (b.stock < 0) {
+    cb(ApiResponse::fail(400, "stock must not be negative"));
+    return;
+  }
   auto *svc = drogon::app().getPlugin<BookService>();
   auto id = svc->createBook(b);
   Json::Value data;
@@ -91,20 +75,42 @@ void BookController::create(
 void BookController::update(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   auto json = req->getJsonObject();
   if (!json) {
     cb(ApiResponse::fail(400, "json body required"));
     return;
   }
-  Book b;
-  b.id = id;
-  b.title = json->get("title", "").asString();
-  b.author = json->get("author", "").asString();
-  b.description = json->get("description", "").asString();
-  b.coverKey = json->get("coverKey", "").asString();
-  b.stock = json->get("stock", 0).asInt64();
+
   auto *svc = drogon::app().getPlugin<BookService>();
-  if (!svc->updateBook(b)) {
+  auto existing = svc->getBook(id);
+  if (!existing) {
+    cb(ApiResponse::fail(404, "book not found"));
+    return;
+  }
+
+  if (json->isMember("title"))
+    existing->title = (*json)["title"].asString();
+  if (json->isMember("author"))
+    existing->author = (*json)["author"].asString();
+  if (json->isMember("description"))
+    existing->description = (*json)["description"].asString();
+  if (json->isMember("coverKey"))
+    existing->coverKey = (*json)["coverKey"].asString();
+  if (json->isMember("stock")) {
+    auto newStock = (*json)["stock"].asInt64();
+    if (newStock < 0) {
+      cb(ApiResponse::fail(400, "stock must not be negative"));
+      return;
+    }
+    existing->stock = newStock;
+  }
+
+  if (!svc->updateBook(*existing)) {
     cb(ApiResponse::fail(500, "update failed"));
     return;
   }
@@ -114,6 +120,11 @@ void BookController::update(
 void BookController::remove(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   auto *svc = drogon::app().getPlugin<BookService>();
   auto book = svc->getBook(id);
   if (!book) {
@@ -137,10 +148,14 @@ void BookController::remove(
   cb(ApiResponse::ok());
 }
 
-// 封面上传: multipart/form-data -> MinIO -> 更新 books.cover_key
 void BookController::uploadCover(
     const drogon::HttpRequestPtr &req,
     std::function<void(const drogon::HttpResponsePtr &)> &&cb, int64_t id) {
+  if (!isAdmin(req)) {
+    cb(ApiResponse::fail(403, "admin only"));
+    return;
+  }
+
   drogon::MultiPartParser parser;
   if (parser.parse(req) != 0 || parser.getFiles().empty()) {
     cb(ApiResponse::fail(400, "no file uploaded"));
@@ -170,7 +185,6 @@ void BookController::uploadCover(
     return;
   }
 
-  // 回写数据库 cover_key
   book->coverKey = key;
   if (!svc->updateBook(*book)) {
     try {

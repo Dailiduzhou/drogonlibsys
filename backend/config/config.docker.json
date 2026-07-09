@@ -7,7 +7,6 @@
     ],
     "app": {
         "log": {
-            "logPath": "./logs/",
             "loglevel": "INFO"
         },
         "maxConnectionNum": 10240,
