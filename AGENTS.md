@@ -8,6 +8,7 @@
 * **对象存储 (OSS)**: MinIO (图书封面等静态资源存储)
 * **鉴权机制**: JWT (JSON Web Token) 双 Token 机制 (Access Token + Refresh Token)
 * **并发控制**: Singleflight (防缓存击穿机制)
+* **Git版本控制**: 进行版本控制，使用Pull Request添加新功能
 
 ---
 
@@ -32,17 +33,17 @@
 ### 2.3 全文搜索模块 (Full-Text Search)
 * **倒排索引构建**:
   * 利用 PostgreSQL 的全文检索能力 (Full Text Search)。
-  * 针对图书的 `description` (描述)、`title` (标题)、`author` (作者) 等字段构建 `tsvector`。
+  * 针对图书的 `description` (描述)、`title` (标题)、`author` (作者) 等字段 使用pg_trgm进行全文搜索
   * 在数据库层面建立 GIN (Generalized Inverted Index) 倒排索引，加速文本检索。
 * **搜索 API**:
-  * 支持分词匹配与权重排序，客户端传入关键词，后端使用 `tsquery` 进行高效检索。
+  * 支持三元组匹配与相似度排序，客户端传入关键词，后端使用 `pg_trgm` 进行高效检索。
 
 ### 2.4 高并发与性能优化 (Performance)
 * **Singleflight 机制**:
   * 针对高频的图书详情查询、热门搜索等接口实现 Singleflight 模式（请求合并）。
   * 当多个并发请求同时查询同一个未命中缓存的图书 Key 时，只允许一个请求打到 PostgreSQL 数据库，其余请求阻塞等待，获取结果后共享返回，有效防止**缓存击穿** (Cache Stampede)。
 * **Redis 缓存层**:
-  * 配合 Singleflight，将高频读取的图书元数据和搜索结果缓存在 Redis 中，减轻 PG 数据库压力。
+  * 配合 Singleflight，将高频读取的图书元数据和搜索结果缓存在 Redis 中，减轻 PG 数据库压力。并添加过期时间抖动（expiration jitter)，防止缓存雪崩。
 
 ### 2.5 工程化与构建 (Engineering)
 * **Xmake 配置与编译**:
