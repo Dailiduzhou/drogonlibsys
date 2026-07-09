@@ -1,4 +1,4 @@
-# 图书管理系统 (Library Management System) 需求规格与技术架构
+# 图书管理系统 (Library Management System)
 
 ## 1. 技术栈选型
 * **Web 框架**: Drogon (基于 C++14/17 的高性能异步 Web 框架)
