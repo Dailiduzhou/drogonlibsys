@@ -119,10 +119,10 @@ fn BookAdminRow(book: api::Book, reload_tick: Signal<u32>) -> Element {
     let mut action_msg = use_signal(|| Option::<String>::None);
     let mut action_err = use_signal(|| Option::<String>::None);
     let mut busy = use_signal(|| false);
-    let cover_src = api::book_cover_url(&book);
-    let cover_label = if !book.cover_key.is_empty() {
+    let has_cover_url = !api::book_cover_url(&book).is_empty();
+    let cover_label = if has_cover_url && !book.cover_key.is_empty() {
         book.cover_key.clone()
-    } else if !cover_src.is_empty() {
+    } else if has_cover_url {
         "coverUrl".to_string()
     } else {
         String::new()

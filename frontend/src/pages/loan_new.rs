@@ -26,11 +26,17 @@ pub fn LoanNew() -> Element {
             user_id: user_id(),
             status: status(),
             borrowed_at: borrowed_at(),
-            returned_at: if returned_at().is_empty() { None } else { Some(returned_at()) },
+            returned_at: if returned_at().is_empty() {
+                None
+            } else {
+                Some(returned_at())
+            },
         };
         spawn(async move {
             match api::create_loan(payload).await {
-                Ok(res) => { nav.push(Route::LoanDetail { id: res.id }); }
+                Ok(res) => {
+                    nav.push(Route::LoanDetail { id: res.id });
+                }
                 Err(e) => {
                     let msg = if e.code() == 409 {
                         "图书库存不足或不存在，请检查后再试。".to_string()
