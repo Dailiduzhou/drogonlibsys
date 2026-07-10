@@ -12,7 +12,7 @@ pub fn BookEdit(id: i64) -> Element {
     let mut author = use_signal(String::new);
     let mut description = use_signal(String::new);
     let mut cover_key = use_signal(String::new);
-    let mut stock = use_signal(|| 0_i32);
+    let mut stock = use_signal(|| 0_i64);
     let mut error = use_signal(|| Option::<String>::None);
     let mut msg = use_signal(|| Option::<String>::None);
     let mut loading = use_signal(|| false);
@@ -114,7 +114,7 @@ pub fn BookEdit(id: i64) -> Element {
                         r#type: "number",
                         value: "{stock}",
                         oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<i32>() { stock.set(v); }
+                            if let Ok(v) = e.value().parse::<i64>() { stock.set(v); }
                         },
                     }
                 }

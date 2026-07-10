@@ -41,14 +41,18 @@ pub fn LoanDetail(id: i64) -> Element {
             user_id: user_id(),
             status: status(),
             borrowed_at: borrowed_at(),
-            returned_at: if returned_at().is_empty() { None } else { Some(returned_at()) },
+            returned_at: if returned_at().is_empty() {
+                None
+            } else {
+                Some(returned_at())
+            },
         };
         spawn(async move {
             match api::update_loan(id, payload).await {
                 Ok(_) => msg.set(Some("更新成功".into())),
                 Err(e) => {
                     let msg = if e.code() == 409 {
-                        "库存不足，无法将状态改回 borrowing。".to_string()
+                        "库存不足，无法将状态改回 borrowed。".to_string()
                     } else {
                         e.to_string()
                     };
@@ -63,7 +67,9 @@ pub fn LoanDetail(id: i64) -> Element {
         msg.set(None);
         spawn(async move {
             match api::delete_loan(id).await {
-                Ok(_) => { nav.push(Route::Loans {}); }
+                Ok(_) => {
+                    nav.push(Route::Loans {});
+                }
                 Err(e) => error.set(Some(e.to_string())),
             }
         });

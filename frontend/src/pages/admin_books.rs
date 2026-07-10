@@ -119,7 +119,15 @@ fn BookAdminRow(book: api::Book, reload_tick: Signal<u32>) -> Element {
     let mut action_msg = use_signal(|| Option::<String>::None);
     let mut action_err = use_signal(|| Option::<String>::None);
     let mut busy = use_signal(|| false);
-    let has_cover = !book.cover_key.is_empty();
+    let cover_src = api::book_cover_url(&book);
+    let cover_label = if !book.cover_key.is_empty() {
+        book.cover_key.clone()
+    } else if !cover_src.is_empty() {
+        "coverUrl".to_string()
+    } else {
+        String::new()
+    };
+    let has_cover = !cover_label.is_empty();
     let mut reload_tick = reload_tick;
 
     let do_delete = move |_| {
@@ -152,7 +160,7 @@ fn BookAdminRow(book: api::Book, reload_tick: Signal<u32>) -> Element {
             td { class: "px-3 py-2 text-slate-300", "{book.author}" }
             td { class: "px-3 py-2", "{book.stock}" }
             td { class: "px-3 py-2 text-xs text-slate-400",
-                if has_cover { "{book.cover_key}" } else { "—" }
+                if has_cover { "{cover_label}" } else { "—" }
             }
             td { class: "px-3 py-2 text-xs text-slate-400", "{book.updated_at}" }
             td { class: "px-3 py-2 whitespace-nowrap",

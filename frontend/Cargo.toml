@@ -5,7 +5,7 @@ authors = ["dailiduzhou <qzhsdream@163.com>"]
 edition = "2021"
 
 [dependencies]
-dioxus = { version = "0.7.1", features = ["router"] }
+dioxus = { version = "0.7.9", features = ["router"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 gloo-net = { version = "0.6", features = ["http"] }
@@ -18,13 +18,7 @@ futures-util = "0.3"
 
 [dependencies.web-sys]
 version = "0.3"
-features = [
-    "HtmlInputElement",
-    "FormData",
-    "File",
-    "FileList",
-    "Blob",
-]
+features = ["HtmlInputElement", "FormData", "File", "FileList", "Blob"]
 
 [features]
 default = ["web"]

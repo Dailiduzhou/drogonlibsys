@@ -18,7 +18,7 @@ pub fn BookNew() -> Element {
     let title = use_signal(String::new);
     let author = use_signal(String::new);
     let mut description = use_signal(String::new);
-    let mut stock = use_signal(|| 0_i32);
+    let mut stock = use_signal(|| 0_i64);
     let mut error = use_signal(|| Option::<String>::None);
     let mut loading = use_signal(|| false);
     let mut selected_file = use_signal(|| Option::<SelectedFile>::None);
@@ -124,7 +124,7 @@ pub fn BookNew() -> Element {
                         r#type: "number",
                         value: "{stock}",
                         oninput: move |e| {
-                            if let Ok(v) = e.value().parse::<i32>() { stock.set(v); }
+                            if let Ok(v) = e.value().parse::<i64>() { stock.set(v); }
                         },
                     }
                 }
