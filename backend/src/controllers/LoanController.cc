@@ -27,6 +27,10 @@ Json::Value loanJson(const LoanRecord &record) {
   v["updatedAt"] = record.updatedAt;
   return v;
 }
+
+bool isValidLoanStatus(const std::string &status) {
+  return status == "borrowed" || status == "returned";
+}
 } // namespace
 
 void LoanController::list(
@@ -92,6 +96,10 @@ void LoanController::create(
     cb(ApiResponse::fail(400, "bookId, userId and borrowedAt required"));
     return;
   }
+  if (!isValidLoanStatus(record.status)) {
+    cb(ApiResponse::fail(400, "status must be borrowed or returned"));
+    return;
+  }
 
   if (record.status == "borrowed") {
     if (!PgClient::adjustStock(record.bookId, -1)) {
@@ -142,6 +150,10 @@ void LoanController::update(
       record.borrowedAt.empty()) {
     cb(ApiResponse::fail(400,
                          "bookId, userId, status and borrowedAt required"));
+    return;
+  }
+  if (!isValidLoanStatus(record.status)) {
+    cb(ApiResponse::fail(400, "status must be borrowed or returned"));
     return;
   }
 
