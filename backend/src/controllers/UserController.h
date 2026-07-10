@@ -1,6 +1,7 @@
 #pragma once
 
 #include "filters/JwtAuthFilter.h"
+#include <cstdint>
 #include <drogon/HttpController.h>
 
 namespace libsys {

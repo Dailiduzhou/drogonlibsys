@@ -1,6 +1,7 @@
 #pragma once
 
 #include "libsys/models/User.h"
+#include <cstdint>
 #include <drogon/plugins/Plugin.h>
 #include <optional>
 #include <vector>

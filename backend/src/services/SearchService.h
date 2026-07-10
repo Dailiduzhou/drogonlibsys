@@ -1,6 +1,7 @@
 #pragma once
 
 #include "libsys/models/Book.h"
+#include <cstdint>
 #include <drogon/plugins/Plugin.h>
 #include <string>
 #include <vector>

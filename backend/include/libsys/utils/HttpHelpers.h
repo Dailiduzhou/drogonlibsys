@@ -3,6 +3,7 @@
 #include "libsys/models/Book.h"
 #include "services/OssService.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <drogon/HttpRequest.h>
 #include <drogon/drogon.h>

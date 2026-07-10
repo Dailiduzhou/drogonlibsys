@@ -3,6 +3,7 @@
 #include "libsys/models/Book.h"
 #include "libsys/models/LoanRecord.h"
 #include "libsys/models/User.h"
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
