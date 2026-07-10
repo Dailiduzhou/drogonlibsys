@@ -10,28 +10,8 @@ pub const API_BASE: &str = match option_env!("LIBSYS_API_BASE") {
     None => "/api",
 };
 
-pub const COVER_BASE: &str = match option_env!("LIBSYS_COVER_BASE") {
-    Some(base) => base,
-    None => "",
-};
-
-/// 兼容旧数据: 由 MinIO object key 拼出可直接 <img src> 的 URL.
-pub fn legacy_cover_url(cover_key: &str) -> String {
-    if cover_key.is_empty() {
-        return String::new();
-    }
-    let base = COVER_BASE.trim_end_matches('/');
-    if base.is_empty() {
-        return String::new();
-    }
-    format!("{base}/{cover_key}")
-}
-
 pub fn book_cover_url(book: &Book) -> String {
-    if !book.cover_url.is_empty() {
-        return book.cover_url.clone();
-    }
-    legacy_cover_url(&book.cover_key)
+    book.cover_url.clone()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
