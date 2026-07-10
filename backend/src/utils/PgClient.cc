@@ -325,7 +325,7 @@ PgClient::countActiveLoanRecordsByBookID(int64_t bookId) {
   try {
     auto f =
         g_db->execSqlAsyncFuture("SELECT count(*) AS cnt FROM loan_records "
-                                 "WHERE id = $1 AND status = 'borrowed'",
+                                 "WHERE book_id = $1 AND status = 'borrowed'",
                                  bookId);
     auto r = f.get();
     if (r.empty())
