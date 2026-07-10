@@ -28,7 +28,8 @@
 * **封面文件上传**:
   * 接收客户端上传的 `multipart/form-data` 图书封面图片。
   * 后端通过兼容 S3 的 C++ SDK 将图片直传至 MinIO 存储桶 (Bucket)。
-  * 数据库仅保存 MinIO 返回的图片对象 URL 或 Object Key。
+  * 数据库保存 MinIO Object Key；接口响应通过 `coverUrl` 返回浏览器可访问的预签名 URL。
+  * 云服务器部署时，`LIBSYS_MINIO_PUBLIC_ENDPOINT` 必须配置为浏览器可访问的 MinIO 域名或公网 IP，不能使用容器内地址或 `localhost:9000`。
 
 ### 2.3 全文搜索模块 (Full-Text Search)
 * **倒排索引构建**:
