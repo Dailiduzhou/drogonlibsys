@@ -13,7 +13,7 @@ public:
   void initAndStart(const Json::Value &config) override;
   void shutdown() override;
 
-  // 上传封面, 返回 Object Key (入库保存)
+  // 上传封面, 返回 Object Key (入库保存; covers/<uuid>-<timestampMillis><ext>)
   std::string uploadCover(int64_t bookId, const std::string &fileName,
                           const std::string &contentType,
                           const std::string &fileData);

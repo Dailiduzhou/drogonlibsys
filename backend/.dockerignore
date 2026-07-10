@@ -28,7 +28,6 @@ tests
 # Docs
 *.md
 docs/
-openapi.yaml
 
 # Docker / compose
 Dockerfile

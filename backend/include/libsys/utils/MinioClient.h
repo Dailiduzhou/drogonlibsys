@@ -16,7 +16,7 @@ public:
   static void shutdown();
 
   // 上传封面图片, 返回 Object Key
-  // objectName 形如: covers/<bookId>-<uuid>.jpg
+  // objectName 形如: covers/<uuid>-<timestampMillis>.jpg
   static std::string putCover(const std::string &objectName,
                               const std::string &contentType,
                               const std::string &data);
