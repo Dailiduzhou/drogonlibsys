@@ -9,7 +9,6 @@
 namespace libsys {
 
 // 图书服务: CRUD + Redis 缓存 + Singleflight 防缓存击穿
-// 参见 AGENTS.md 2.2 图书管理 + 2.4 高并发性能优化
 class BookService : public drogon::Plugin<BookService> {
 public:
   void initAndStart(const Json::Value &config) override;

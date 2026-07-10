@@ -20,7 +20,6 @@ struct RegisterResult {
 };
 
 // 鉴权服务: 登录 / 刷新 / 登出
-// 参见 AGENTS.md 2.1 双 Token 机制 + JWT 黑名单
 class AuthService : public drogon::Plugin<AuthService> {
 public:
   void initAndStart(const Json::Value &config) override;
