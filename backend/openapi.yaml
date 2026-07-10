@@ -15,7 +15,7 @@ tags:
   - name: Loans
     description: Borrow / return & loan record management
   - name: Search
-    description: Full-text search (PostgreSQL tsvector + GIN index)
+    description: Full-text search (PostgreSQL pg_trgm + GIN index)
   - name: Users
     description: User management (admin only)
 
@@ -86,10 +86,8 @@ components:
           type: integer
         createdAt:
           type: string
-          format: date-time
         updatedAt:
           type: string
-          format: date-time
 
     BookCreate:
       type: object
@@ -138,17 +136,13 @@ components:
           enum: [borrowed, returned]
         borrowedAt:
           type: string
-          format: date-time
         returnedAt:
           type: string
-          format: date-time
           nullable: true
         createdAt:
           type: string
-          format: date-time
         updatedAt:
           type: string
-          format: date-time
 
     LoanCreate:
       type: object
@@ -166,10 +160,9 @@ components:
           default: borrowed
         borrowedAt:
           type: string
-          format: date-time
         returnedAt:
           type: string
-          format: date-time
+          nullable: true
 
     LoanUpdate:
       type: object
@@ -186,10 +179,9 @@ components:
           enum: [borrowed, returned]
         borrowedAt:
           type: string
-          format: date-time
         returnedAt:
           type: string
-          format: date-time
+          nullable: true
 
     CoverUploadResult:
       type: object
@@ -220,10 +212,8 @@ components:
           description: Number of unreturned (status='borrowed') loan records. Users with activeLoans > 0 cannot be deleted.
         createdAt:
           type: string
-          format: date-time
         updatedAt:
           type: string
-          format: date-time
 
     Error:
       type: object
@@ -478,7 +468,7 @@ paths:
     post:
       tags: [Auth]
       summary: Refresh tokens
-      description: Exchange a valid refresh token for a new token pair. The old access token is blacklisted.
+      description: Exchange a valid refresh token for a new token pair. The old refresh token is blacklisted.
       requestBody:
         required: true
         content:
@@ -574,7 +564,7 @@ paths:
     post:
       tags: [Books]
       summary: Create book
-      description: Add a new book. Requires authentication.
+      description: Add a new book. Admin role required.
       security:
         - BearerAuth: []
       requestBody:
@@ -607,6 +597,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin only
           content:
             application/json:
               schema:
@@ -645,7 +641,7 @@ paths:
     put:
       tags: [Books]
       summary: Update book
-      description: Update book info. Requires authentication.
+      description: Update book info. Admin role required.
       security:
         - BearerAuth: []
       parameters:
@@ -680,6 +676,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           description: Update failed
           content:
@@ -690,7 +698,7 @@ paths:
       tags: [Books]
       summary: Delete book
       description: >
-        Delete a book and its cover from MinIO. Requires authentication.
+        Delete a book and its cover from MinIO. Admin role required.
         Books with unreturned (status='borrowed') loans cannot be deleted.
       security:
         - BearerAuth: []
@@ -743,7 +751,7 @@ paths:
     post:
       tags: [Books]
       summary: Upload cover image
-      description: Upload a cover image via multipart/form-data. Stored in MinIO. Requires authentication.
+      description: Upload a cover image via multipart/form-data. Stored in MinIO. Admin role required.
       security:
         - BearerAuth: []
       parameters:
@@ -759,6 +767,7 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required: [file]
               properties:
                 file:
                   type: string
@@ -783,6 +792,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin only
           content:
             application/json:
               schema:
@@ -965,7 +980,7 @@ paths:
                             type: integer
                             format: int64
         "400":
-          description: Missing required fields
+          description: Missing required fields or invalid status
           content:
             application/json:
               schema:
@@ -978,6 +993,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Book out of stock or not found
           content:
             application/json:
               schema:
@@ -1060,7 +1081,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
         "400":
-          description: Missing required fields
+          description: Missing required fields or invalid status
           content:
             application/json:
               schema:
@@ -1073,6 +1094,18 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Loan record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Book out of stock
           content:
             application/json:
               schema:
@@ -1115,6 +1148,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "404":
+          description: Loan record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           description: Delete failed
           content:
@@ -1126,7 +1165,7 @@ paths:
     get:
       tags: [Search]
       summary: Full-text search
-      description: Search books by keyword using PostgreSQL tsvector + GIN index. Public access.
+      description: Search books by keyword using PostgreSQL pg_trgm + GIN index. Public access.
       parameters:
         - name: q
           in: query
